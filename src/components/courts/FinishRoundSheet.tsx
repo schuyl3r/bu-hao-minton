@@ -15,15 +15,15 @@ export function FinishRoundSheet({
   const [shuttlecocks, setShuttlecocks] = useState("");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end bg-black/60 animate-fade-in" onClick={onClose}>
       <div
-        className="w-full rounded-t-2xl border-t border-hairline bg-ink-raised p-4"
+        className="w-full animate-sheet-in rounded-t-2xl border-t border-hairline bg-ink-raised p-4"
         style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-hairline" />
         <h3 className="font-display text-xl tracking-wide text-line">
-          FINISH ROUND &middot; {courtLabel.toUpperCase()}
+          {`MARK COMPLETE · ${courtLabel.toUpperCase()}`}
         </h3>
         <label className="mt-3 block text-xs font-medium text-line-dim">
           Shuttlecocks used (optional)
@@ -45,7 +45,7 @@ export function FinishRoundSheet({
             fullWidth
             onClick={() => onFinish(shuttlecocks.trim() ? Number(shuttlecocks) : undefined)}
           >
-            Finish Round
+            Mark Complete
           </Button>
         </div>
       </div>

@@ -20,7 +20,14 @@ import type { MatchRequest, PlayerSessionStats, Tier } from "@/lib/types";
  *   3. Catch-up bias, ascending (if enabled)    (priority 3)
  *   4. Skill-imbalance, ascending (if enabled)  (priority 4)
  *   5. Oldest honored request's age, ascending  (fairness tiebreak, see below)
- *   6. Candidate index                          (deterministic fallback)
+ *   6. Uniform random pick among the fully-tied group (see below)
+ *
+ * Tier 6 exists so "re-randomize" in the UI is meaningful: candidates that
+ * are genuinely indistinguishable by every priority above (all deterministic
+ * criteria tied) are the only ones ever chosen among at random — this never
+ * overrides a real ranking difference, it only breaks otherwise-arbitrary
+ * ties. `random` is injectable (defaults to Math.random) so tests can pass a
+ * fixed source and keep assertions deterministic.
  *
  * Request honoring (#1) has a carve-out: a request is only ever considered
  * "honorable" this round if satisfying it doesn't force a pairing that has
@@ -55,6 +62,8 @@ export interface GenerateRoundInput {
   pendingRequests: MatchRequest[];
   catchUpMode: boolean;
   skillBalanceMode: boolean;
+  /** Injectable RNG source for the final tiebreak — defaults to Math.random. */
+  random?: () => number;
 }
 
 export type GenerateRoundResult =
@@ -152,6 +161,7 @@ export function generateRound(input: GenerateRoundInput): GenerateRoundResult {
     pendingRequests,
     catchUpMode,
     skillBalanceMode,
+    random = Math.random,
   } = input;
 
   if (eligiblePlayerIds.length < 4) {
@@ -215,7 +225,7 @@ export function generateRound(input: GenerateRoundInput): GenerateRoundResult {
     };
   });
 
-  scored.sort((a, b) => {
+  const compareDeterministic = (a: Scored, b: Scored) => {
     if (a.honoredCount !== b.honoredCount) return b.honoredCount - a.honoredCount;
     if (a.repeatScore !== b.repeatScore) return a.repeatScore - b.repeatScore;
     if (catchUpMode && a.catchUpSum !== b.catchUpSum) return a.catchUpSum - b.catchUpSum;
@@ -223,10 +233,14 @@ export function generateRound(input: GenerateRoundInput): GenerateRoundResult {
       return a.skillImbalance - b.skillImbalance;
     }
     if (a.oldestHonoredAge !== b.oldestHonoredAge) return a.oldestHonoredAge - b.oldestHonoredAge;
-    return a.index - b.index;
-  });
+    return 0;
+  };
 
-  const winner = scored[0];
+  scored.sort((a, b) => compareDeterministic(a, b) || a.index - b.index);
+
+  const best = scored[0];
+  const tiedWithBest = scored.filter((c) => compareDeterministic(c, best) === 0);
+  const winner = tiedWithBest[Math.floor(random() * tiedWithBest.length)];
   return {
     ok: true,
     players: winner.candidate.players,

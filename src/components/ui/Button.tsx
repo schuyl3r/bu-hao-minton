@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes } from "react";
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-court-bright text-line active:bg-court",
+  primary: "bg-court-bright text-ink active:bg-court",
   secondary:
     "bg-ink-overlay text-line border border-hairline active:bg-ink-raised",
   danger: "bg-bench/15 text-bench border border-bench/40 active:bg-bench/25",

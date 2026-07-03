@@ -1,6 +1,5 @@
 import type {
   CourtProfile,
-  CourtSessionState,
   MatchRequest,
   PlayerProfile,
   PlayerSessionStats,
@@ -23,11 +22,16 @@ export interface PairingCount {
   count: number;
 }
 
-export interface CourtUtilization {
+export interface CourtActivity {
   courtLabel: string;
-  activeMinutes: number;
-  playedMinutes: number;
-  utilization: number;
+  gamesPlayed: number;
+  totalPlayedMinutes: number;
+}
+
+export interface GameDurationStats {
+  averageMinutes: number;
+  longestMinutes: number;
+  shortestMinutes: number;
 }
 
 export interface SessionSummary {
@@ -38,14 +42,18 @@ export interface SessionSummary {
   fewestGamesPlayers: { name: string; gamesPlayed: number }[];
   unhonoredRequests: { fromName: string; targetName: string; kind: string }[];
   sessionDurationMinutes: number;
-  courtUtilization: CourtUtilization[];
+  /** Games played and total time on each court — there's no "available time"
+   *  to compare against anymore (courts have no duration/block), so this is
+   *  activity, not a percentage utilization. */
+  courtActivity: CourtActivity[];
+  /** null when no games finished yet — there's nothing to average. */
+  gameDuration: GameDurationStats | null;
 }
 
 export function computeSessionSummary({
   session,
   players,
   courts,
-  courtStates,
   rounds,
   requests,
   playerStats,
@@ -54,7 +62,6 @@ export function computeSessionSummary({
   session: SessionMeta;
   players: PlayerProfile[];
   courts: CourtProfile[];
-  courtStates: Record<string, CourtSessionState>;
   rounds: Round[];
   requests: MatchRequest[];
   playerStats: Record<string, PlayerSessionStats>;
@@ -129,19 +136,26 @@ export function computeSessionSummary({
   const sessionEnd = session.endedAt ?? now;
   const sessionDurationMinutes = Math.round((sessionEnd - session.startedAt) / 60000);
 
-  const courtUtilization: CourtUtilization[] = courts.map((c) => {
-    const state = courtStates[c.id];
-    const activeMs = state?.startTime != null ? sessionEnd - state.startTime : 0;
-    const playedMs = finishedRounds
-      .filter((r) => r.courtId === c.id)
-      .reduce((sum, r) => sum + ((r.finishedAt as number) - r.startedAt), 0);
+  const courtActivity: CourtActivity[] = courts.map((c) => {
+    const onCourt = finishedRounds.filter((r) => r.courtId === c.id);
+    const playedMs = onCourt.reduce((sum, r) => sum + ((r.finishedAt as number) - r.startedAt), 0);
     return {
       courtLabel: c.label,
-      activeMinutes: Math.round(activeMs / 60000),
-      playedMinutes: Math.round(playedMs / 60000),
-      utilization: activeMs > 0 ? playedMs / activeMs : 0,
+      gamesPlayed: onCourt.length,
+      totalPlayedMinutes: Math.round(playedMs / 60000),
     };
   });
+
+  const gameDurationsMinutes = finishedRounds.map((r) => ((r.finishedAt as number) - r.startedAt) / 60000);
+  const gameDuration: GameDurationStats | null =
+    gameDurationsMinutes.length > 0
+      ? {
+          averageMinutes:
+            Math.round((gameDurationsMinutes.reduce((a, b) => a + b, 0) / gameDurationsMinutes.length) * 10) / 10,
+          longestMinutes: Math.round(Math.max(...gameDurationsMinutes) * 10) / 10,
+          shortestMinutes: Math.round(Math.min(...gameDurationsMinutes) * 10) / 10,
+        }
+      : null;
 
   return {
     games,
@@ -151,6 +165,7 @@ export function computeSessionSummary({
     fewestGamesPlayers,
     unhonoredRequests,
     sessionDurationMinutes,
-    courtUtilization,
+    courtActivity,
+    gameDuration,
   };
 }

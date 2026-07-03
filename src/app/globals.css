@@ -2,27 +2,33 @@
 
 /*
   BuHaominton is dark-first by design, not by system preference: it's read
-  courtside under gym lighting/glare, and the palette is drawn from an
-  actual badminton court — court-blue surface, line-white text, shuttle-
-  amber for warnings. This isn't a light/dark toggle, it's the identity.
+  courtside under gym lighting/glare. The palette leans into a floodlit
+  night-match energy rather than a generic navy SaaS-dashboard look — a
+  neutral near-black surface, a vivid lime-volt primary (the "live/active"
+  color), a cobalt secondary for tier identity, and a hot-coral danger tone.
+  This isn't a light/dark toggle, it's the identity.
 */
 @theme {
-  --color-ink: #0b1220;
-  --color-ink-raised: #101b31;
-  --color-ink-overlay: #182747;
-  --color-court: #17406e;
-  --color-court-bright: #2e76c2;
-  --color-line: #f3efe6;
-  --color-line-dim: #8d9bb3;
-  --color-shuttle: #e8a33d;
-  --color-in: #33c48d;
-  --color-bench: #e8637a;
-  --color-hairline: #22304e;
+  --color-ink: #0a0a0d;
+  --color-ink-raised: #17171b;
+  --color-ink-overlay: #212126;
+  --color-court: #7dbe1e;
+  --color-court-bright: #c6ff3d;
+  --color-secondary: #2952e3;
+  --color-line: #f5f5f0;
+  --color-line-dim: #8a8a93;
+  --color-shuttle: #ffb020;
+  --color-in: #22c55e;
+  --color-bench: #ff3b5c;
+  --color-hairline: #2a2a30;
 
-  --font-display: var(--font-bebas-neue), sans-serif;
-  --font-sans: var(--font-inter), sans-serif;
+  --font-display: var(--font-barlow-condensed), sans-serif;
+  --font-sans: var(--font-barlow), sans-serif;
 
   --animate-pulse-slow: pulse-slow 2.4s ease-in-out infinite;
+  --animate-reveal: reveal 180ms ease-out both;
+  --animate-fade-in: fade-in 200ms ease-out both;
+  --animate-sheet-in: sheet-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @keyframes pulse-slow {
     0%,
@@ -31,6 +37,42 @@
     }
     50% {
       opacity: 0.55;
+    }
+  }
+
+  /* Disclosure panels (tier picker, cancel/remove confirms) fade+drop in
+     rather than snapping into existence — state-transition should read as
+     motion, not a hard cut. */
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Bottom sheets animate up from their trigger rather than popping in,
+     for spatial continuity with the button that opened them. */
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 }
@@ -53,12 +95,21 @@
 
   ::selection {
     background: var(--color-court-bright);
-    color: var(--color-line);
+    color: var(--color-ink);
   }
 
   :focus-visible {
     outline: 2px solid var(--color-shuttle);
     outline-offset: 2px;
+  }
+
+  /* Tactile press feedback on every tappable control (150ms, transform-only
+     so it never triggers layout/reflow), respecting reduced-motion below. */
+  button {
+    transition: transform 120ms ease-out;
+  }
+  button:active {
+    transform: scale(0.97);
   }
 }
 
@@ -69,5 +120,8 @@
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+  button:active {
+    transform: none;
   }
 }

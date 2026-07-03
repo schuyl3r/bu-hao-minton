@@ -30,27 +30,27 @@ export function RequestSheet({
     );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end bg-black/60 animate-fade-in" onClick={onClose}>
       <div
-        className="max-h-[75vh] w-full overflow-y-auto rounded-t-2xl border-t border-hairline bg-ink-raised p-4 pb-8"
+        className="max-h-[75vh] w-full animate-sheet-in overflow-y-auto rounded-t-2xl border-t border-hairline bg-ink-raised p-4 pb-8"
         style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-hairline" />
         <h3 className="font-display text-xl tracking-wide text-line">
-          {fromPlayer.name.toUpperCase()} WANTS TO&hellip;
+          {`${fromPlayer.name.toUpperCase()} WANTS TO…`}
         </h3>
 
         <div className="mt-3 flex gap-2">
           <button
             onClick={() => setKind("with")}
-            className={`h-10 flex-1 rounded-lg text-sm font-semibold ${kind === "with" ? "bg-court-bright text-line" : "bg-ink-overlay text-line-dim"}`}
+            className={`h-10 flex-1 rounded-lg text-sm font-semibold ${kind === "with" ? "bg-court-bright text-ink" : "bg-ink-overlay text-line-dim"}`}
           >
             Play WITH
           </button>
           <button
             onClick={() => setKind("against")}
-            className={`h-10 flex-1 rounded-lg text-sm font-semibold ${kind === "against" ? "bg-court-bright text-line" : "bg-ink-overlay text-line-dim"}`}
+            className={`h-10 flex-1 rounded-lg text-sm font-semibold ${kind === "against" ? "bg-court-bright text-ink" : "bg-ink-overlay text-line-dim"}`}
           >
             Play AGAINST
           </button>

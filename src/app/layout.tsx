@@ -1,17 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Bebas_Neue, Inter } from "next/font/google";
+import { Barlow, Barlow_Condensed } from "next/font/google";
 import { HydrationGate } from "@/components/HydrationGate";
 import { BottomNav } from "@/components/BottomNav";
 import "./globals.css";
 
-const bebasNeue = Bebas_Neue({
-  variable: "--font-bebas-neue",
-  weight: "400",
+const barlowCondensed = Barlow_Condensed({
+  variable: "--font-barlow-condensed",
+  weight: ["500", "600", "700"],
   subsets: ["latin"],
 });
 
-const inter = Inter({
-  variable: "--font-inter",
+const barlow = Barlow({
+  variable: "--font-barlow",
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
 });
 
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b1220",
+  themeColor: "#0a0a0d",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -33,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${bebasNeue.variable} ${inter.variable}`}>
+    <html lang="en" className={`${barlowCondensed.variable} ${barlow.variable}`}>
       <body className="min-h-dvh font-sans antialiased">
         <HydrationGate>
           <div

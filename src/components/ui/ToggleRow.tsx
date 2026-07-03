@@ -22,7 +22,7 @@ export function ToggleRow({
         className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? "bg-in" : "bg-ink-overlay"}`}
       >
         <span
-          className={`absolute top-1 h-5 w-5 rounded-full bg-line transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`}
+          className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-line transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`}
         />
       </button>
     </div>

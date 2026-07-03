@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/", label: "Courts", icon: CourtIcon },
+  { href: "/", label: "Session", icon: SessionIcon },
   { href: "/players", label: "Players", icon: PeopleIcon },
-  { href: "/session", label: "Session", icon: SessionIcon },
+  { href: "/courts", label: "Courts", icon: CourtIcon },
 ] as const;
 
 export function BottomNav() {
@@ -43,7 +43,7 @@ export function BottomNav() {
 }
 
 function iconColor(active: boolean) {
-  return active ? "var(--color-shuttle)" : "var(--color-line-dim)";
+  return active ? "var(--color-court-bright)" : "var(--color-line-dim)";
 }
 
 function CourtIcon({ active }: { active: boolean }) {

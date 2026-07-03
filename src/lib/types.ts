@@ -25,12 +25,13 @@ export interface PlayerProfile {
   id: string;
   name: string;
   tier?: Tier;
+  /** Compressed square JPEG data URL, or undefined for the tier/? fallback. */
+  avatar?: string;
 }
 
 export interface CourtProfile {
   id: string;
   label: string;
-  durationMinutes: number;
 }
 
 /** Session-scoped stats for a single player. Reset every new session. */
@@ -43,10 +44,13 @@ export interface PlayerSessionStats {
   against: Record<string, number>;
 }
 
-/** Session-scoped runtime state for a single court. Reset every new session. */
+/**
+ * Session-scoped runtime state for a single court. Reset every new session.
+ * Courts run fully independently — there's no shared block clock, so the
+ * only thing tracked here is which round (if any) is currently on it. Each
+ * round carries its own startedAt/finishedAt for its count-up stopwatch.
+ */
 export interface CourtSessionState {
-  /** Set the moment the court's first-ever round in this session is confirmed. */
-  startTime: number | null;
   currentRoundId: string | null;
 }
 
@@ -81,8 +85,8 @@ export interface SessionMeta {
   id: string;
   startedAt: number;
   endedAt: number | null;
-  defaultDurationMinutes: number;
-  estimatedMinutesPerGame: number;
+  /** Informational label only — not tied to any timer, countdown, or warning. */
+  totalHours: number;
   catchUpMode: boolean;
   skillBalanceMode: boolean;
 }

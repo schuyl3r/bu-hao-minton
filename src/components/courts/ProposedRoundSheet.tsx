@@ -9,28 +9,29 @@ import type { MatchRequest, PlayerProfile, PlayerSessionStats } from "@/lib/type
 
 export function ProposedRoundSheet({
   courtLabel,
-  initialTeams,
+  teams,
+  onTeamsChange,
+  onRerandomize,
   eligiblePool,
   playersById,
   playerStats,
   pendingRequests,
-  timingWarning,
   skillBalanceMode,
   onConfirm,
   onClose,
 }: {
   courtLabel: string;
-  initialTeams: [Team, Team];
+  teams: [Team, Team];
+  onTeamsChange: (teams: [Team, Team]) => void;
+  onRerandomize: () => void;
   eligiblePool: string[];
   playersById: Record<string, PlayerProfile>;
   playerStats: Record<string, PlayerSessionStats>;
   pendingRequests: MatchRequest[];
-  timingWarning: string | null;
   skillBalanceMode: boolean;
   onConfirm: (players: [string, string, string, string], teams: [Team, Team]) => void;
   onClose: () => void;
 }) {
-  const [teams, setTeams] = useState<[Team, Team]>(initialTeams);
   const [swapping, setSwapping] = useState<{ teamIndex: 0 | 1; slotIndex: 0 | 1 } | null>(null);
 
   const players = [...teams[0], ...teams[1]] as [string, string, string, string];
@@ -42,31 +43,23 @@ export function ProposedRoundSheet({
 
   const swapTo = (replacementId: string) => {
     if (!swapping) return;
-    setTeams((prev) => {
-      const next: [Team, Team] = [[...prev[0]] as Team, [...prev[1]] as Team];
-      next[swapping.teamIndex][swapping.slotIndex] = replacementId;
-      return next;
-    });
+    const next: [Team, Team] = [[...teams[0]] as Team, [...teams[1]] as Team];
+    next[swapping.teamIndex][swapping.slotIndex] = replacementId;
+    onTeamsChange(next);
     setSwapping(null);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end bg-black/60 animate-fade-in" onClick={onClose}>
       <div
-        className="max-h-[85vh] w-full overflow-y-auto rounded-t-2xl border-t border-hairline bg-ink-raised p-4"
+        className="max-h-[85vh] w-full animate-sheet-in overflow-y-auto rounded-t-2xl border-t border-hairline bg-ink-raised p-4"
         style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-hairline" />
         <h3 className="font-display text-xl tracking-wide text-line">
-          NEXT ROUND &middot; {courtLabel.toUpperCase()}
+          {`NEXT ROUND · ${courtLabel.toUpperCase()}`}
         </h3>
-
-        {timingWarning && (
-          <div className="mt-2 rounded-lg border border-shuttle/40 bg-shuttle/10 px-3 py-2 text-xs font-medium text-shuttle">
-            {timingWarning}
-          </div>
-        )}
 
         <div className="mt-3 flex gap-2">
           {teams.map((team, teamIndex) => (
@@ -87,7 +80,7 @@ export function ProposedRoundSheet({
                         : "bg-ink-raised"
                     }`}
                   >
-                    <TierBadge tier={playersById[id]?.tier} />
+                    <TierBadge tier={playersById[id]?.tier} avatar={playersById[id]?.avatar} />
                     <span className="min-w-0 flex-1 truncate text-sm text-line">{nameOf(id)}</span>
                     <span className="text-xs text-line-dim">⇄</span>
                   </button>
@@ -141,10 +134,13 @@ export function ProposedRoundSheet({
           <Button variant="secondary" fullWidth onClick={onClose}>
             Cancel
           </Button>
-          <Button fullWidth onClick={() => onConfirm(players, teams)}>
-            Confirm &amp; Start
+          <Button variant="secondary" fullWidth onClick={onRerandomize}>
+            Re-randomize
           </Button>
         </div>
+        <Button fullWidth className="mt-2" onClick={() => onConfirm(players, teams)}>
+          Confirm &amp; Start
+        </Button>
       </div>
     </div>
   );

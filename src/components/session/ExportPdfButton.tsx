@@ -9,21 +9,21 @@ import type { SessionMeta } from "@/lib/types";
 
 export function ExportPdfButton({ session }: { session: SessionMeta }) {
   const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const players = useConfigStore((s) => s.players);
   const courts = useConfigStore((s) => s.courts);
-  const courtStates = useSessionStore((s) => s.courtStates);
   const rounds = useSessionStore((s) => s.rounds);
   const requests = useSessionStore((s) => s.requests);
   const playerStats = useSessionStore((s) => s.playerStats);
 
   const handleExport = async () => {
     setGenerating(true);
+    setError(null);
     try {
       const summary = computeSessionSummary({
         session,
         players,
         courts,
-        courtStates,
         rounds,
         requests,
         playerStats,
@@ -50,14 +50,19 @@ export function ExportPdfButton({ session }: { session: SessionMeta }) {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+    } catch {
+      setError("Couldn't generate the PDF. Try again — if it keeps failing, the summary data is still safe in the app.");
     } finally {
       setGenerating(false);
     }
   };
 
   return (
-    <Button fullWidth onClick={handleExport} disabled={generating}>
-      {generating ? "Generating PDF…" : "Export PDF Summary"}
-    </Button>
+    <div>
+      <Button fullWidth onClick={handleExport} disabled={generating}>
+        {generating ? "Generating PDF…" : "Export PDF Summary"}
+      </Button>
+      {error && <p className="mt-2 text-xs font-medium text-bench">{error}</p>}
+    </div>
   );
 }

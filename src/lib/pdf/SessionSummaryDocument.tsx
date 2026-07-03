@@ -40,8 +40,7 @@ export function SessionSummaryDocument({
       <Page size="A4" style={styles.page}>
         <Text style={styles.title}>BuHaominton &mdash; Session Summary</Text>
         <Text style={styles.subtitle}>
-          {sessionLabel} &middot; {summary.sessionDurationMinutes} minutes &middot;{" "}
-          {summary.games.length} game{summary.games.length === 1 ? "" : "s"} played
+          {`${sessionLabel} · ${summary.sessionDurationMinutes} minutes · ${summary.games.length} game${summary.games.length === 1 ? "" : "s"} played`}
         </Text>
 
         <View style={styles.section}>
@@ -72,7 +71,7 @@ export function SessionSummaryDocument({
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            Games Played Per Player &middot; Total shuttlecocks used: {summary.totalShuttlecocks}
+            {`Games Played Per Player · Total shuttlecocks used: ${summary.totalShuttlecocks}`}
           </Text>
           <View style={styles.headerRow}>
             <Text style={styles.headerCellWide}>Player</Text>
@@ -93,8 +92,7 @@ export function SessionSummaryDocument({
           ) : (
             summary.mostRepeatedPairings.map((p, i) => (
               <Text key={i}>
-                {p.playerAName} &amp; {p.playerBName} &mdash; met {p.count} time
-                {p.count === 1 ? "" : "s"}
+                {`${p.playerAName} & ${p.playerBName} — met ${p.count} time${p.count === 1 ? "" : "s"}`}
               </Text>
             ))
           )}
@@ -106,9 +104,7 @@ export function SessionSummaryDocument({
             <Text style={styles.emptyText}>No attendees recorded.</Text>
           ) : (
             <Text>
-              {summary.fewestGamesPlayers.map((p) => p.name).join(", ")} &mdash;{" "}
-              {summary.fewestGamesPlayers[0].gamesPlayed} game
-              {summary.fewestGamesPlayers[0].gamesPlayed === 1 ? "" : "s"} each
+              {`${summary.fewestGamesPlayers.map((p) => p.name).join(", ")} — ${summary.fewestGamesPlayers[0].gamesPlayed} game${summary.fewestGamesPlayers[0].gamesPlayed === 1 ? "" : "s"} each`}
             </Text>
           )}
         </View>
@@ -127,21 +123,32 @@ export function SessionSummaryDocument({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Per-Court Utilization</Text>
+          <Text style={styles.sectionTitle}>Per-Court Activity</Text>
           <View style={styles.headerRow}>
             <Text style={styles.headerCellWide}>Court</Text>
-            <Text style={styles.headerCell}>Active</Text>
-            <Text style={styles.headerCell}>Played</Text>
-            <Text style={styles.headerCell}>Utilization</Text>
+            <Text style={styles.headerCell}>Games</Text>
+            <Text style={styles.headerCell}>Total played</Text>
           </View>
-          {summary.courtUtilization.map((c) => (
+          {summary.courtActivity.map((c) => (
             <View style={styles.row} key={c.courtLabel} wrap={false}>
               <Text style={styles.cellWide}>{c.courtLabel}</Text>
-              <Text style={styles.cell}>{c.activeMinutes}m</Text>
-              <Text style={styles.cell}>{c.playedMinutes}m</Text>
-              <Text style={styles.cell}>{Math.round(c.utilization * 100)}%</Text>
+              <Text style={styles.cell}>{c.gamesPlayed}</Text>
+              <Text style={styles.cell}>{c.totalPlayedMinutes}m</Text>
             </View>
           ))}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Game Duration</Text>
+          {summary.gameDuration === null ? (
+            <Text style={styles.emptyText}>No games finished this session.</Text>
+          ) : (
+            <Text>
+              Average {summary.gameDuration.averageMinutes}m &middot; Longest{" "}
+              {summary.gameDuration.longestMinutes}m &middot; Shortest{" "}
+              {summary.gameDuration.shortestMinutes}m
+            </Text>
+          )}
         </View>
       </Page>
     </Document>

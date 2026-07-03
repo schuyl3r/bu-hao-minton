@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { computeSessionSummary } from "@/lib/sessionSummary";
 import type {
   CourtProfile,
-  CourtSessionState,
   MatchRequest,
   PlayerProfile,
   PlayerSessionStats,
@@ -18,7 +17,7 @@ const players: PlayerProfile[] = [
   { id: "E", name: "Eve" },
 ];
 
-const courts: CourtProfile[] = [{ id: "c1", label: "Court 1", durationMinutes: 120 }];
+const courts: CourtProfile[] = [{ id: "c1", label: "Court 1" }];
 
 function stats(overrides: Partial<Record<string, Partial<PlayerSessionStats>>>) {
   const base: Record<string, PlayerSessionStats> = {};
@@ -32,14 +31,9 @@ const session: SessionMeta = {
   id: "s1",
   startedAt: 0,
   endedAt: 60 * 60000, // 60 minutes later
-  defaultDurationMinutes: 120,
-  estimatedMinutesPerGame: 20,
+  totalHours: 2,
   catchUpMode: false,
   skillBalanceMode: false,
-};
-
-const courtStates: Record<string, CourtSessionState> = {
-  c1: { startTime: 0, currentRoundId: null },
 };
 
 describe("computeSessionSummary", () => {
@@ -87,7 +81,6 @@ describe("computeSessionSummary", () => {
       session,
       players,
       courts,
-      courtStates,
       rounds,
       requests: [],
       playerStats: stats({}),
@@ -109,7 +102,6 @@ describe("computeSessionSummary", () => {
       session,
       players,
       courts,
-      courtStates,
       rounds: [],
       requests: [],
       playerStats,
@@ -134,7 +126,6 @@ describe("computeSessionSummary", () => {
       session,
       players,
       courts,
-      courtStates,
       rounds: [],
       requests: [],
       playerStats,
@@ -161,7 +152,6 @@ describe("computeSessionSummary", () => {
       session,
       players,
       courts,
-      courtStates,
       rounds: [],
       requests,
       playerStats: stats({}),
@@ -170,7 +160,7 @@ describe("computeSessionSummary", () => {
     expect(summary.unhonoredRequests).toEqual([{ fromName: "Alice", targetName: "Bob", kind: "with" }]);
   });
 
-  it("computes per-court utilization as played time over active block time", () => {
+  it("computes per-court activity as games played and total played time", () => {
     const rounds: Round[] = [
       {
         id: "r1",
@@ -189,15 +179,68 @@ describe("computeSessionSummary", () => {
       session,
       players,
       courts,
-      courtStates,
       rounds,
       requests: [],
       playerStats: stats({}),
       now: 60 * 60000,
     });
-    expect(summary.courtUtilization).toHaveLength(1);
-    expect(summary.courtUtilization[0].activeMinutes).toBe(60);
-    expect(summary.courtUtilization[0].playedMinutes).toBe(30);
-    expect(summary.courtUtilization[0].utilization).toBeCloseTo(0.5);
+    expect(summary.courtActivity).toHaveLength(1);
+    expect(summary.courtActivity[0].gamesPlayed).toBe(1);
+    expect(summary.courtActivity[0].totalPlayedMinutes).toBe(30);
+  });
+
+  it("returns null gameDuration when no games have finished", () => {
+    const summary = computeSessionSummary({
+      session,
+      players,
+      courts,
+      rounds: [],
+      requests: [],
+      playerStats: stats({}),
+      now: 60 * 60000,
+    });
+    expect(summary.gameDuration).toBeNull();
+  });
+
+  it("computes average/longest/shortest game duration from finished rounds", () => {
+    const rounds: Round[] = [
+      {
+        id: "r1",
+        courtId: "c1",
+        players: ["A", "B", "C", "D"],
+        teams: [
+          ["A", "B"],
+          ["C", "D"],
+        ],
+        startedAt: 0,
+        finishedAt: 10 * 60000, // 10 min
+        status: "finished",
+      },
+      {
+        id: "r2",
+        courtId: "c1",
+        players: ["A", "B", "C", "D"],
+        teams: [
+          ["A", "C"],
+          ["B", "D"],
+        ],
+        startedAt: 10 * 60000,
+        finishedAt: 40 * 60000, // 30 min
+        status: "finished",
+      },
+    ];
+    const summary = computeSessionSummary({
+      session,
+      players,
+      courts,
+      rounds,
+      requests: [],
+      playerStats: stats({}),
+      now: 60 * 60000,
+    });
+    expect(summary.gameDuration).not.toBeNull();
+    expect(summary.gameDuration?.averageMinutes).toBe(20);
+    expect(summary.gameDuration?.longestMinutes).toBe(30);
+    expect(summary.gameDuration?.shortestMinutes).toBe(10);
   });
 });

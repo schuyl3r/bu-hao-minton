@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateRound } from "@/lib/randomizer";
+import { generateRound, type GenerateRoundInput } from "@/lib/randomizer";
 import type { MatchRequest, PlayerSessionStats, Tier } from "@/lib/types";
 
 function blankStats(): PlayerSessionStats {
@@ -38,11 +38,23 @@ function request(
   };
 }
 
+/**
+ * Every scenario-level test below cares about the deterministic ranking
+ * (requests/repeats/catch-up/skill), not the final random tiebreak — so
+ * they all run through a fixed `random: () => 0`, which always resolves to
+ * the first candidate in the fully-tied group (the same candidate the old,
+ * purely index-based tiebreak would have picked). The RNG behavior itself
+ * gets its own dedicated tests further down.
+ */
+function run(input: Omit<GenerateRoundInput, "random"> & { random?: () => number }) {
+  return generateRound({ random: () => 0, ...input });
+}
+
 const PLAYERS8 = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 describe("generateRound", () => {
   it("returns not-enough-players when fewer than 4 are eligible", () => {
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: ["A", "B", "C"],
       playerStats: statsFor(["A", "B", "C"]),
       playerTiers: {},
@@ -54,7 +66,7 @@ describe("generateRound", () => {
   });
 
   it("seats exactly 4 of the eligible players with a valid 2v2 split when history is empty", () => {
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: PLAYERS8,
       playerStats: statsFor(PLAYERS8),
       playerTiers: {},
@@ -77,7 +89,7 @@ describe("generateRound", () => {
     recordMeeting(stats, "A", "B", "pairedWith");
     recordMeeting(stats, "A", "B", "pairedWith");
 
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: ["A", "B", "C", "D"],
       playerStats: stats,
       playerTiers: {},
@@ -108,7 +120,7 @@ describe("generateRound", () => {
         recordMeeting(stats, ids[i], ids[j], "pairedWith");
       }
     }
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: ids,
       playerStats: stats,
       playerTiers: {},
@@ -120,7 +132,7 @@ describe("generateRound", () => {
   });
 
   it("honors a fresh 'with' request by seating both on the same team", () => {
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: PLAYERS8,
       playerStats: statsFor(PLAYERS8),
       playerTiers: {},
@@ -138,7 +150,7 @@ describe("generateRound", () => {
   });
 
   it("honors a fresh 'against' request by seating both on opposite teams", () => {
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: PLAYERS8,
       playerStats: statsFor(PLAYERS8),
       playerTiers: {},
@@ -167,7 +179,7 @@ describe("generateRound", () => {
     // one of those (repeatScore 0) rather than force A-B together again.
     recordMeeting(stats, "A", "B", "pairedWith");
 
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: PLAYERS8,
       playerStats: stats,
       playerTiers: {},
@@ -190,7 +202,7 @@ describe("generateRound", () => {
         recordMeeting(stats, ids[i], ids[j], "pairedWith");
       }
     }
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: ids,
       playerStats: stats,
       playerTiers: {},
@@ -206,7 +218,7 @@ describe("generateRound", () => {
   });
 
   it("leaves a request pending (not honored) when its target isn't in the eligible pool", () => {
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: ["A", "C", "D", "E"],
       playerStats: statsFor(["A", "B", "C", "D", "E"]),
       playerTiers: {},
@@ -227,7 +239,7 @@ describe("generateRound", () => {
     stats["D"].gamesPlayed = 5;
     // E, F, G, H are late arrivals with zero games played.
 
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: PLAYERS8,
       playerStats: stats,
       playerTiers: {},
@@ -252,7 +264,7 @@ describe("generateRound", () => {
     // Best (lowest diff) options are AB|CD and AD|BC, both diff 1 — and
     // both of those seat the tier-A "A" against an E or a D, never against
     // nobody: balance is about totals, individual gaps are untouched.
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: ids,
       playerStats: statsFor(ids),
       playerTiers: tiers,
@@ -273,7 +285,7 @@ describe("generateRound", () => {
   it("flags partialSkillBalance when an unrated player is seated under skill-balance mode", () => {
     const ids = ["A", "B", "C", "D"];
     const tiers: Record<string, Tier> = { A: "A", B: "B" }; // C, D unrated
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: ids,
       playerStats: statsFor(ids),
       playerTiers: tiers,
@@ -288,7 +300,7 @@ describe("generateRound", () => {
 
   it("does not flag partialSkillBalance when skill-balance mode is off", () => {
     const ids = ["A", "B", "C", "D"];
-    const result = generateRound({
+    const result = run({
       eligiblePlayerIds: ids,
       playerStats: statsFor(ids),
       playerTiers: {},
@@ -299,5 +311,77 @@ describe("generateRound", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.partialSkillBalance).toBe(false);
+  });
+
+  describe("re-randomize (RNG tiebreak)", () => {
+    it("only randomizes among candidates that are fully tied on every deterministic priority", () => {
+      // A and B have met before; C, D, E, F have not met anyone. The only
+      // way to get repeatScore 0 is to exclude the A-B pair from meeting
+      // again, so the winning group must be drawn from the C/D/E/F fresh
+      // pool — regardless of which random draw is used.
+      const ids = ["A", "B", "C", "D", "E", "F"];
+      const stats = statsFor(ids);
+      recordMeeting(stats, "A", "B", "pairedWith");
+
+      for (const draw of [0, 0.33, 0.66, 0.99]) {
+        const result = run({
+          eligiblePlayerIds: ids,
+          playerStats: stats,
+          playerTiers: {},
+          pendingRequests: [],
+          catchUpMode: false,
+          skillBalanceMode: false,
+          random: () => draw,
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) continue;
+        expect(result.repeatScore).toBe(0);
+      }
+    });
+
+    it("different random draws can surface different candidates among a genuine tie", () => {
+      const ids = ["A", "B", "C", "D", "E", "F", "G", "H"];
+      const stats = statsFor(ids);
+      // Completely fresh pool: every 4-player group scores identically, so
+      // the entire candidate set is tied and eligible for the random draw.
+      const seenGroups = new Set<string>();
+      for (const draw of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]) {
+        const result = run({
+          eligiblePlayerIds: ids,
+          playerStats: stats,
+          playerTiers: {},
+          pendingRequests: [],
+          catchUpMode: false,
+          skillBalanceMode: false,
+          random: () => draw,
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) continue;
+        seenGroups.add([...result.players].sort().join(","));
+      }
+      expect(seenGroups.size).toBeGreaterThan(1);
+    });
+
+    it("is fully deterministic for a fixed random source (same draw -> same result)", () => {
+      const a = run({
+        eligiblePlayerIds: PLAYERS8,
+        playerStats: statsFor(PLAYERS8),
+        playerTiers: {},
+        pendingRequests: [],
+        catchUpMode: false,
+        skillBalanceMode: false,
+        random: () => 0.42,
+      });
+      const b = run({
+        eligiblePlayerIds: PLAYERS8,
+        playerStats: statsFor(PLAYERS8),
+        playerTiers: {},
+        pendingRequests: [],
+        catchUpMode: false,
+        skillBalanceMode: false,
+        random: () => 0.42,
+      });
+      expect(a).toEqual(b);
+    });
   });
 });

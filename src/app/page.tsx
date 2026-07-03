@@ -1,105 +1,128 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { TierBadge } from "@/components/ui/TierBadge";
-import { CourtCard } from "@/components/courts/CourtCard";
-import { getEligiblePlayerIds } from "@/lib/eligibility";
-import { useConfigStore } from "@/lib/store/configStore";
+import { LiveElapsed } from "@/components/ui/LiveElapsed";
+import { QuestionMarkIcon } from "@/components/ui/icons";
+import { CourtManager } from "@/components/session/CourtManager";
+import { ExportPdfButton } from "@/components/session/ExportPdfButton";
+import { PendingRequestsList } from "@/components/session/PendingRequestsList";
+import { SessionSettings } from "@/components/session/SessionSettings";
+import { StartSessionForm } from "@/components/session/StartSessionForm";
+import { HelpSheet } from "@/components/HelpSheet";
 import { useSessionStore } from "@/lib/store/sessionStore";
 
-export default function CourtsPage() {
-  const courts = useConfigStore((s) => s.courts);
-  const players = useConfigStore((s) => s.players);
+export default function HomePage() {
   const session = useSessionStore((s) => s.session);
-  const courtStates = useSessionStore((s) => s.courtStates);
-  const playerStats = useSessionStore((s) => s.playerStats);
-  const rounds = useSessionStore((s) => s.rounds);
-  const requests = useSessionStore((s) => s.requests);
-
+  const endSession = useSessionStore((s) => s.endSession);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const hasActiveSession = Boolean(session && !session.endedAt);
-
-  if (!hasActiveSession) {
-    return (
-      <main className="flex-1 px-4">
-        <SectionHeader title="Courts" />
-        <EmptyState
-          title="No session running"
-          hint="Start a session from the Session tab to begin queuing rounds."
-        />
-        <Link href="/session" className="mt-3 block">
-          <Button fullWidth>Go to Session</Button>
-        </Link>
-      </main>
-    );
-  }
-
-  const playersById = Object.fromEntries(players.map((p) => [p.id, p]));
-  const playerTiers = Object.fromEntries(players.map((p) => [p.id, p.tier]));
-  const eligiblePlayerIds = getEligiblePlayerIds(playerStats, rounds);
-  const pendingRequests = requests.filter((r) => r.status === "pending");
-
-  const waiting = eligiblePlayerIds
-    .map((id) => playersById[id])
-    .filter(Boolean)
-    .sort((a, b) => (playerStats[a.id]?.gamesPlayed ?? 0) - (playerStats[b.id]?.gamesPlayed ?? 0));
 
   return (
     <main className="flex-1 px-4">
-      <SectionHeader title="Courts" />
+      <div className="court-rule flex items-end justify-between pb-3 pt-4">
+        <div>
+          <p className="font-display text-5xl leading-[0.85] tracking-wide text-court-bright">
+            不好
+          </p>
+          <p className="mt-1 font-display text-xl tracking-[0.2em] text-line">BUHAOMINTON</p>
+        </div>
+        <button
+          onClick={() => setShowHelp(true)}
+          aria-label="How this app works"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-overlay text-line-dim"
+        >
+          <QuestionMarkIcon />
+        </button>
+      </div>
 
-      {courts.length === 0 ? (
-        <EmptyState title="No courts yet" hint="Add courts from the Session tab." />
-      ) : (
-        <div className="flex flex-col gap-3">
-          {courts.map((c) => {
-            const state = courtStates[c.id];
-            const round = state?.currentRoundId
-              ? rounds.find((r) => r.id === state.currentRoundId)
-              : undefined;
-            return (
-              <CourtCard
-                key={c.id}
-                court={c}
-                courtState={state}
-                round={round}
-                playersById={playersById}
-                playerStats={playerStats}
-                playerTiers={playerTiers}
-                eligiblePlayerIds={eligiblePlayerIds}
-                pendingRequests={pendingRequests}
-                catchUpMode={session?.catchUpMode ?? false}
-                skillBalanceMode={session?.skillBalanceMode ?? false}
-                estimatedMinutesPerGame={session?.estimatedMinutesPerGame ?? 20}
-              />
-            );
-          })}
+      {hasActiveSession && session && (
+        <div className="mb-3 mt-3 animate-reveal rounded-xl border border-hairline bg-ink-raised p-4">
+          <p className="text-xs uppercase tracking-wide text-line-dim">In progress</p>
+          <p className="font-display text-3xl tracking-wide text-line">
+            <LiveElapsed since={session.startedAt} format="compact" />
+          </p>
+          <p className="text-xs text-line-dim">Planned for {session.totalHours}h</p>
+          {!confirmingEnd ? (
+            <Button variant="danger" fullWidth className="mt-3" onClick={() => setConfirmingEnd(true)}>
+              End Session
+            </Button>
+          ) : (
+            <div className="mt-3 animate-reveal rounded-lg border border-bench/40 bg-bench/10 p-3">
+              <p className="text-sm font-medium text-bench">
+                Ending the session locks in the results and lets you export the PDF
+                summary. In-progress rounds stay recorded as-is.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Button variant="secondary" fullWidth onClick={() => setConfirmingEnd(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  fullWidth
+                  onClick={() => {
+                    endSession();
+                    setConfirmingEnd(false);
+                  }}
+                >
+                  End Session
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      <h2 className="mb-2 mt-5 font-display text-xl tracking-wide text-line">
-        WAITING ({waiting.length})
-      </h2>
-      {waiting.length === 0 ? (
-        <EmptyState title="Nobody waiting" />
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {waiting.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center gap-3 rounded-xl border border-hairline bg-ink-raised px-3 py-2"
-            >
-              <TierBadge tier={p.tier} />
-              <span className="flex-1 text-[15px] text-line">{p.name}</span>
-              <span className="text-xs text-line-dim">
-                {playerStats[p.id]?.gamesPlayed ?? 0} games
-              </span>
-            </li>
-          ))}
-        </ul>
+      {session?.endedAt && (
+        <div className="mb-3 mt-3 animate-reveal rounded-xl border border-in/40 bg-in/10 p-4">
+          <p className="text-sm font-semibold text-in">Session ended</p>
+          <p className="mt-1 mb-3 text-xs text-line-dim">
+            Export the full summary &mdash; every game, fairness check, and unhonored
+            requests &mdash; as a PDF.
+          </p>
+          <ExportPdfButton session={session} />
+        </div>
       )}
+
+      {!hasActiveSession && (
+        <div className="mb-3 mt-3">
+          <StartSessionForm />
+        </div>
+      )}
+
+      {hasActiveSession && (
+        <>
+          <div className="mb-3">
+            <SessionSettings />
+          </div>
+
+          <h2 className="mb-2 mt-4 font-display text-xl tracking-wide text-line">
+            COURTS
+          </h2>
+          <div className="mb-3">
+            <CourtManager />
+          </div>
+
+          <h2 className="mb-2 mt-4 font-display text-xl tracking-wide text-line">
+            PENDING REQUESTS
+          </h2>
+          <PendingRequestsList />
+        </>
+      )}
+
+      {!hasActiveSession && !session?.endedAt && (
+        <div className="mt-2">
+          <h2 className="mb-2 font-display text-xl tracking-wide text-line">COURTS</h2>
+          <CourtManager />
+        </div>
+      )}
+
+      <p className="mb-2 mt-8 text-center text-[11px] text-line-dim">
+        Built by <span className="font-semibold text-line">Schuyler Ng</span>
+      </p>
+
+      {showHelp && <HelpSheet onClose={() => setShowHelp(false)} />}
     </main>
   );
 }

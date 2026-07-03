@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { getBusyPlayerIds } from "@/lib/eligibility";
 import { makeId } from "@/lib/id";
 import { useConfigStore } from "@/lib/store/configStore";
 import type {
@@ -19,8 +20,11 @@ interface SessionState {
   requests: MatchRequest[];
 
   startNewSession: (opts: {
-    defaultDurationMinutes: number;
-    estimatedMinutesPerGame: number;
+    totalHours: number;
+    courtCount: number;
+    playerCount: number;
+    catchUpMode: boolean;
+    skillBalanceMode: boolean;
   }) => void;
   endSession: () => void;
 
@@ -29,7 +33,6 @@ interface SessionState {
 
   setCatchUpMode: (on: boolean) => void;
   setSkillBalanceMode: (on: boolean) => void;
-  setEstimatedMinutesPerGame: (minutes: number) => void;
 
   addRequest: (fromPlayerId: string, targetPlayerId: string, kind: RequestKind) => void;
   cancelRequest: (requestId: string) => void;
@@ -47,6 +50,11 @@ interface SessionState {
   ) => string;
   finishRound: (roundId: string, shuttlecocksUsed?: number) => void;
   cancelRound: (roundId: string) => void;
+
+  /** Cancels any in-progress round on this court, so it can be safely removed. */
+  cancelActiveRoundForCourt: (courtId: string) => void;
+  /** Cancels any in-progress round this player is seated in, so they can be safely removed. */
+  cancelActiveRoundForPlayer: (playerId: string) => void;
 }
 
 function blankStats(): PlayerSessionStats {
@@ -54,11 +62,32 @@ function blankStats(): PlayerSessionStats {
 }
 
 function blankCourtState(): CourtSessionState {
-  return { startTime: null, currentRoundId: null };
+  return { currentRoundId: null };
 }
 
 function bump(record: Record<string, number>, key: string) {
   record[key] = (record[key] ?? 0) + 1;
+}
+
+/** Shared by finishRound/cancelRound cleanup paths below. */
+function cancelRoundInState(
+  s: Pick<SessionState, "rounds" | "courtStates" | "requests">,
+  round: Round,
+) {
+  return {
+    rounds: s.rounds.map((r) =>
+      r.id === round.id ? { ...r, status: "cancelled" as const, finishedAt: Date.now() } : r,
+    ),
+    courtStates: {
+      ...s.courtStates,
+      [round.courtId]: { ...s.courtStates[round.courtId], currentRoundId: null },
+    },
+    requests: s.requests.map((r) =>
+      r.honoredInRoundId === round.id
+        ? { ...r, status: "pending" as const, honoredInRoundId: undefined }
+        : r,
+    ),
+  };
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -70,7 +99,17 @@ export const useSessionStore = create<SessionState>()(
       rounds: [],
       requests: [],
 
-      startNewSession: ({ defaultDurationMinutes, estimatedMinutesPerGame }) => {
+      startNewSession: ({ totalHours, courtCount, playerCount, catchUpMode, skillBalanceMode }) => {
+        // Gap-fill: only ever ADD slots to reach the requested count, never
+        // duplicate or touch what's already in the persistent roster.
+        const configState = useConfigStore.getState();
+        for (let i = configState.players.length; i < playerCount; i++) {
+          useConfigStore.getState().addPlayer(`Player ${i + 1}`);
+        }
+        for (let i = configState.courts.length; i < courtCount; i++) {
+          useConfigStore.getState().addCourt(`Court ${i + 1}`);
+        }
+
         const { players, courts } = useConfigStore.getState();
         const playerStats: Record<string, PlayerSessionStats> = {};
         players.forEach((p) => {
@@ -85,10 +124,9 @@ export const useSessionStore = create<SessionState>()(
             id: makeId(),
             startedAt: Date.now(),
             endedAt: null,
-            defaultDurationMinutes,
-            estimatedMinutesPerGame,
-            catchUpMode: false,
-            skillBalanceMode: false,
+            totalHours,
+            catchUpMode,
+            skillBalanceMode,
           },
           playerStats,
           courtStates,
@@ -104,8 +142,11 @@ export const useSessionStore = create<SessionState>()(
 
       setAttendance: (playerId, present) =>
         set((s) => {
+          // A player mid-round is a randomizer input that's already locked
+          // in for this round — don't let attendance change out from under
+          // it. The UI disables these controls too; this is the backstop.
+          if (getBusyPlayerIds(s.rounds).has(playerId)) return s;
           const existing = s.playerStats[playerId] ?? blankStats();
-          if (existing.status === "resting" && present) return s;
           return {
             playerStats: {
               ...s.playerStats,
@@ -116,6 +157,7 @@ export const useSessionStore = create<SessionState>()(
 
       setResting: (playerId, resting) =>
         set((s) => {
+          if (getBusyPlayerIds(s.rounds).has(playerId)) return s;
           const existing = s.playerStats[playerId];
           if (!existing || existing.status === "not-arrived") return s;
           return {
@@ -132,13 +174,6 @@ export const useSessionStore = create<SessionState>()(
       setSkillBalanceMode: (on) =>
         set((s) => ({
           session: s.session ? { ...s.session, skillBalanceMode: on } : s.session,
-        })),
-
-      setEstimatedMinutesPerGame: (minutes) =>
-        set((s) => ({
-          session: s.session
-            ? { ...s.session, estimatedMinutesPerGame: minutes }
-            : s.session,
         })),
 
       addRequest: (fromPlayerId, targetPlayerId, kind) =>
@@ -181,7 +216,6 @@ export const useSessionStore = create<SessionState>()(
         const id = makeId();
         const now = Date.now();
         set((s) => {
-          const prevCourtState = s.courtStates[courtId] ?? blankCourtState();
           const requestIds = new Set(honoredRequestIds);
           return {
             rounds: [
@@ -198,10 +232,7 @@ export const useSessionStore = create<SessionState>()(
             ],
             courtStates: {
               ...s.courtStates,
-              [courtId]: {
-                startTime: prevCourtState.startTime ?? now,
-                currentRoundId: id,
-              },
+              [courtId]: { currentRoundId: id },
             },
             requests: s.requests.map((r) =>
               requestIds.has(r.id)
@@ -258,25 +289,23 @@ export const useSessionStore = create<SessionState>()(
         set((s) => {
           const round = s.rounds.find((r) => r.id === roundId);
           if (!round || round.status !== "in-progress") return s;
-          return {
-            rounds: s.rounds.map((r) =>
-              r.id === roundId ? { ...r, status: "cancelled", finishedAt: Date.now() } : r,
-            ),
-            courtStates: {
-              ...s.courtStates,
-              [round.courtId]: {
-                ...s.courtStates[round.courtId],
-                currentRoundId: null,
-              },
-            },
-            // A cancelled round never happened — any requests it tentatively
-            // consumed must go back to the pending queue for a future round.
-            requests: s.requests.map((r) =>
-              r.honoredInRoundId === roundId
-                ? { ...r, status: "pending", honoredInRoundId: undefined }
-                : r,
-            ),
-          };
+          return cancelRoundInState(s, round);
+        }),
+
+      cancelActiveRoundForCourt: (courtId) =>
+        set((s) => {
+          const round = s.rounds.find((r) => r.courtId === courtId && r.status === "in-progress");
+          if (!round) return s;
+          return cancelRoundInState(s, round);
+        }),
+
+      cancelActiveRoundForPlayer: (playerId) =>
+        set((s) => {
+          const round = s.rounds.find(
+            (r) => r.status === "in-progress" && r.players.includes(playerId),
+          );
+          if (!round) return s;
+          return cancelRoundInState(s, round);
         }),
     }),
     {

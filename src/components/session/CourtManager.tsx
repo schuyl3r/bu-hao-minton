@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PencilIcon, TrashIcon } from "@/components/ui/icons";
 import { useConfigStore } from "@/lib/store/configStore";
 import { useSessionStore } from "@/lib/store/sessionStore";
 
@@ -13,23 +14,31 @@ export function CourtManager() {
   const removeCourt = useConfigStore((s) => s.removeCourt);
   const session = useSessionStore((s) => s.session);
   const registerCourt = useSessionStore((s) => s.registerCourt);
+  const cancelActiveRoundForCourt = useSessionStore((s) => s.cancelActiveRoundForCourt);
   const hasActiveSession = Boolean(session && !session.endedAt);
 
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
-  const [duration, setDuration] = useState(session?.defaultDurationMinutes ?? 120);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
-  const [editDuration, setEditDuration] = useState(0);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const submitAdd = () => {
     const trimmed = label.trim();
     if (!trimmed) return;
-    const id = addCourt(trimmed, duration);
+    const id = addCourt(trimmed);
     if (hasActiveSession) registerCourt(id);
     setLabel("");
-    setDuration(session?.defaultDurationMinutes ?? 120);
     setAdding(false);
+  };
+
+  const confirmRemove = (courtId: string) => {
+    // A court with an in-progress round has no surviving way to Finish or
+    // Cancel that round once its card is gone — cancel it first so the
+    // round doesn't get orphaned and its players don't get stuck "busy".
+    cancelActiveRoundForCourt(courtId);
+    removeCourt(courtId);
+    setRemovingId(null);
   };
 
   return (
@@ -40,19 +49,12 @@ export function CourtManager() {
 
       {courts.map((c) =>
         editingId === c.id ? (
-          <div key={c.id} className="rounded-xl border border-hairline bg-ink-raised p-3">
+          <div key={c.id} className="animate-reveal rounded-xl border border-hairline bg-ink-raised p-3">
             <input
               autoFocus
               value={editLabel}
               onChange={(e) => setEditLabel(e.target.value)}
               className="w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
-            />
-            <input
-              type="number"
-              min={1}
-              value={editDuration}
-              onChange={(e) => setEditDuration(Number(e.target.value) || 0)}
-              className="mt-2 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
             />
             <div className="mt-2 flex gap-2">
               <Button variant="secondary" fullWidth onClick={() => setEditingId(null)}>
@@ -61,7 +63,7 @@ export function CourtManager() {
               <Button
                 fullWidth
                 onClick={() => {
-                  updateCourt(c.id, { label: editLabel.trim(), durationMinutes: editDuration });
+                  updateCourt(c.id, { label: editLabel.trim() });
                   setEditingId(null);
                 }}
               >
@@ -72,51 +74,56 @@ export function CourtManager() {
         ) : (
           <div
             key={c.id}
-            className="flex items-center justify-between rounded-xl border border-hairline bg-ink-raised px-3 py-2.5"
+            className="flex items-center justify-between rounded-xl border border-hairline bg-ink-raised px-3 py-2.5 transition-colors"
           >
-            <div>
-              <p className="text-[15px] font-semibold text-line">{c.label}</p>
-              <p className="text-xs text-line-dim">{c.durationMinutes} min block</p>
-            </div>
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => {
-                  setEditingId(c.id);
-                  setEditLabel(c.label);
-                  setEditDuration(c.durationMinutes);
-                }}
-                aria-label="Edit court"
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-overlay text-line-dim"
-              >
-                ✎
-              </button>
-              <button
-                onClick={() => removeCourt(c.id)}
-                aria-label="Remove court"
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-overlay text-line-dim"
-              >
-                ×
-              </button>
-            </div>
+            <p className="text-[15px] font-semibold text-line">{c.label}</p>
+            {removingId === c.id ? (
+              <div className="flex shrink-0 animate-reveal gap-1.5">
+                <Button variant="secondary" className="px-2.5 py-1.5 text-xs" onClick={() => setRemovingId(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  className="px-2.5 py-1.5 text-xs"
+                  onClick={() => confirmRemove(c.id)}
+                >
+                  Confirm
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => {
+                    setEditingId(c.id);
+                    setEditLabel(c.label);
+                  }}
+                  aria-label="Edit court"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-overlay text-line-dim"
+                >
+                  <PencilIcon />
+                </button>
+                <button
+                  onClick={() => setRemovingId(c.id)}
+                  aria-label="Remove court"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-overlay text-line-dim"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
+            )}
           </div>
         ),
       )}
 
       {adding ? (
-        <div className="rounded-xl border border-hairline bg-ink-raised p-3">
+        <div className="animate-reveal rounded-xl border border-hairline bg-ink-raised p-3">
           <input
             autoFocus
             value={label}
             onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitAdd()}
             placeholder="Court label (e.g. Court 1)"
             className="w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line placeholder:text-line-dim focus:outline-none"
-          />
-          <input
-            type="number"
-            min={1}
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value) || 0)}
-            className="mt-2 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
           />
           <div className="mt-2 flex gap-2">
             <Button variant="secondary" fullWidth onClick={() => setAdding(false)}>

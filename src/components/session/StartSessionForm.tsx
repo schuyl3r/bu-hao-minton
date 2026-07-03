@@ -2,23 +2,27 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ToggleRow } from "@/components/ui/ToggleRow";
+import { useConfigStore } from "@/lib/store/configStore";
 import { useSessionStore } from "@/lib/store/sessionStore";
 
 export function StartSessionForm() {
   const session = useSessionStore((s) => s.session);
   const startNewSession = useSessionStore((s) => s.startNewSession);
-  const [defaultDuration, setDefaultDuration] = useState(120);
-  const [estimatedPerGame, setEstimatedPerGame] = useState(20);
-  const [confirming, setConfirming] = useState(false);
+  const existingPlayerCount = useConfigStore((s) => s.players.length);
+  const existingCourtCount = useConfigStore((s) => s.courts.length);
 
-  const hasUnfinishedSession = Boolean(session && !session.endedAt);
+  const [courtCount, setCourtCount] = useState(Math.max(existingCourtCount, 2));
+  const [playerCount, setPlayerCount] = useState(Math.max(existingPlayerCount, 8));
+  const [totalHours, setTotalHours] = useState(2);
+  const [catchUpMode, setCatchUpMode] = useState(false);
+  const [skillBalanceMode, setSkillBalanceMode] = useState(false);
 
+  // This form is only ever rendered when there's no active session (the
+  // Session page hides it otherwise), so starting here never overwrites an
+  // in-progress session — no confirmation step needed.
   const start = () => {
-    startNewSession({
-      defaultDurationMinutes: defaultDuration,
-      estimatedMinutesPerGame: estimatedPerGame,
-    });
-    setConfirming(false);
+    startNewSession({ totalHours, courtCount, playerCount, catchUpMode, skillBalanceMode });
   };
 
   return (
@@ -27,59 +31,73 @@ export function StartSessionForm() {
         {session ? "Start another session" : "Start your first session"}
       </p>
       <p className="mt-1 text-xs text-line-dim">
-        Your player roster carries over. Attendance, games played, and pairing
-        history all start fresh.
+        Your player roster carries over
+        {existingPlayerCount > 0 || existingCourtCount > 0
+          ? ` (${existingPlayerCount} players, ${existingCourtCount} courts already saved)`
+          : ""}
+        . Attendance, games played, and pairing history all start fresh.
       </p>
 
-      <label className="mt-3 block text-xs font-medium text-line-dim">
-        Default court duration (minutes)
-      </label>
-      <input
-        type="number"
-        min={1}
-        value={defaultDuration}
-        onChange={(e) => setDefaultDuration(Number(e.target.value) || 0)}
-        className="mt-1 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
-      />
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-line-dim">Courts</label>
+          <input
+            type="number"
+            min={1}
+            inputMode="numeric"
+            value={courtCount}
+            onChange={(e) => setCourtCount(Number(e.target.value) || 0)}
+            className="mt-1 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-line-dim">Players</label>
+          <input
+            type="number"
+            min={4}
+            inputMode="numeric"
+            value={playerCount}
+            onChange={(e) => setPlayerCount(Number(e.target.value) || 0)}
+            className="mt-1 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
+          />
+        </div>
+      </div>
+      <p className="mt-1 text-[11px] text-line-dim">
+        Only adds slots to reach these counts — your existing roster is never duplicated.
+      </p>
 
-      <label className="mt-3 block text-xs font-medium text-line-dim">
-        Estimated minutes per game
-      </label>
+      <label className="mt-3 block text-xs font-medium text-line-dim">Total hours</label>
       <input
         type="number"
-        min={1}
-        value={estimatedPerGame}
-        onChange={(e) => setEstimatedPerGame(Number(e.target.value) || 0)}
-        className="mt-1 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
+        min={0.5}
+        step={0.5}
+        inputMode="decimal"
+        value={totalHours}
+        onChange={(e) => setTotalHours(Number(e.target.value) || 0)}
+        className="mt-1 w-32 rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
       />
       <p className="mt-1 text-[11px] text-line-dim">
-        Used only to warn when a court is running low on time before its block ends.
+        Just a label for your own reference — not tied to any timer or warning.
       </p>
 
-      {!confirming ? (
-        <Button
-          fullWidth
-          className="mt-4"
-          onClick={() => (hasUnfinishedSession ? setConfirming(true) : start())}
-        >
-          Start New Session
-        </Button>
-      ) : (
-        <div className="mt-4 rounded-lg border border-bench/40 bg-bench/10 p-3">
-          <p className="text-sm font-medium text-bench">
-            This ends the current session and clears its rounds, attendance, and
-            pairing history. Export its PDF first if you need it.
-          </p>
-          <div className="mt-2 flex gap-2">
-            <Button variant="secondary" fullWidth onClick={() => setConfirming(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" fullWidth onClick={start}>
-              Start anyway
-            </Button>
-          </div>
-        </div>
-      )}
+      <div className="mt-3 divide-y divide-hairline border-t border-hairline">
+        <ToggleRow
+          label="Catch-up mode"
+          hint="Weight players with fewer games higher for the next round"
+          checked={catchUpMode}
+          onChange={setCatchUpMode}
+        />
+        <ToggleRow
+          label="Skill tier balance"
+          hint="Balance team totals, not individual matchups"
+          checked={skillBalanceMode}
+          onChange={setSkillBalanceMode}
+        />
+      </div>
+
+      <Button fullWidth className="mt-4" onClick={start}>
+        Start New Session
+      </Button>
     </div>
   );
 }
