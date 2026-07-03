@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/*
+  BuHaominton is dark-first by design, not by system preference: it's read
+  courtside under gym lighting/glare, and the palette is drawn from an
+  actual badminton court — court-blue surface, line-white text, shuttle-
+  amber for warnings. This isn't a light/dark toggle, it's the identity.
+*/
+@theme {
+  --color-ink: #0b1220;
+  --color-ink-raised: #101b31;
+  --color-ink-overlay: #182747;
+  --color-court: #17406e;
+  --color-court-bright: #2e76c2;
+  --color-line: #f3efe6;
+  --color-line-dim: #8d9bb3;
+  --color-shuttle: #e8a33d;
+  --color-in: #33c48d;
+  --color-bench: #e8637a;
+  --color-hairline: #22304e;
+
+  --font-display: var(--font-bebas-neue), sans-serif;
+  --font-sans: var(--font-inter), sans-serif;
+
+  --animate-pulse-slow: pulse-slow 2.4s ease-in-out infinite;
+
+  @keyframes pulse-slow {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--color-ink);
+    color: var(--color-line);
+  }
+
+  /* Court-line divider: a thin double rule instead of a generic hairline. */
+  .court-rule {
+    border-top: 1px solid var(--color-hairline);
+    box-shadow: 0 3px 0 -2px var(--color-hairline);
+  }
+
+  ::selection {
+    background: var(--color-court-bright);
+    color: var(--color-line);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-shuttle);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
