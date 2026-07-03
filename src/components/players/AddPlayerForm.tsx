@@ -17,7 +17,11 @@ export function AddPlayerForm() {
   const addPlayer = useConfigStore((s) => s.addPlayer);
   const updatePlayer = useConfigStore((s) => s.updatePlayer);
   const registerPlayer = useSessionStore((s) => s.registerPlayer);
-  const hasActiveSession = useSessionStore((s) => Boolean(s.session && !s.session.endedAt));
+  const session = useSessionStore((s) => s.session);
+  const hasActiveSession = Boolean(session && !session.endedAt);
+  // Mirrors PlayerRow's tier lock: a tier the randomizer never weighs (skill
+  // balance off) is just a setting nobody can act on, so don't offer it.
+  const tierLocked = hasActiveSession && !session?.skillBalanceMode;
 
   if (!open) {
     return (
@@ -44,7 +48,7 @@ export function AddPlayerForm() {
   const submit = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const id = addPlayer(trimmed, tier);
+    const id = addPlayer(trimmed, tierLocked ? undefined : tier);
     if (avatarDataUrl) updatePlayer(id, { avatar: avatarDataUrl });
     if (hasActiveSession) registerPlayer(id);
     reset();
@@ -77,24 +81,33 @@ export function AddPlayerForm() {
         placeholder="Player name"
         className="w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line placeholder:text-line-dim focus:outline-none"
       />
-      <div className="mt-2 flex gap-1.5">
-        {TIERS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTier(tier === t ? undefined : t)}
-            className={`h-9 flex-1 rounded-lg text-sm font-semibold transition-colors ${
-              tier === t
-                ? "bg-court-bright text-ink"
-                : "bg-ink-overlay text-line-dim"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-      <p className="mt-1 text-[11px] text-line-dim">
-        Tier is optional — leave blank if unrated.
-      </p>
+      {tierLocked ? (
+        <p className="mt-2 rounded-lg bg-ink-overlay px-3 py-2 text-xs text-line-dim">
+          Turn on <span className="font-semibold text-line">Skill tier balance</span> in
+          Session settings to set player tiers.
+        </p>
+      ) : (
+        <>
+          <div className="mt-2 flex gap-1.5">
+            {TIERS.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTier(tier === t ? undefined : t)}
+                className={`h-9 flex-1 rounded-lg text-sm font-semibold transition-colors ${
+                  tier === t
+                    ? "bg-court-bright text-ink"
+                    : "bg-ink-overlay text-line-dim"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[11px] text-line-dim">
+            Tier is optional — leave blank if unrated.
+          </p>
+        </>
+      )}
       <div className="mt-3 flex gap-2">
         <Button variant="secondary" fullWidth onClick={reset}>
           Cancel

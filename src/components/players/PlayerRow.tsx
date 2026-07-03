@@ -78,6 +78,12 @@ export function PlayerRow({
   const gamesPlayed = stats?.gamesPlayed ?? 0;
   const gamesColor = gamesPlayedColorClass(gamesPlayed, averageGamesPlayed(allStats));
 
+  // Tiers only mean anything when skill balance mode is actually weighing
+  // them — outside of a session (still building the roster) tier-setting
+  // stays open, but once a session is running without skill balance on,
+  // editing would just be a no-op the randomizer never looks at.
+  const tierLocked = hasActiveSession && !session?.skillBalanceMode;
+
   const commitName = () => {
     const trimmed = name.trim();
     if (trimmed && trimmed !== player.name) {
@@ -98,7 +104,7 @@ export function PlayerRow({
   return (
     <li
       id={`player-row-${player.id}`}
-      className={`rounded-xl border p-3 transition-colors ${isPlaying ? "border-in/40 bg-in/5" : "border-hairline bg-ink-raised"} ${highlighted ? "animate-search-highlight" : ""}`}
+      className={`rounded-xl border p-3.5 transition-colors ${isPlaying ? "border-in/40 bg-in/5" : "border-hairline bg-ink-raised"} ${highlighted ? "animate-search-highlight" : ""}`}
     >
       <div className="flex items-center gap-3">
         <button
@@ -107,7 +113,7 @@ export function PlayerRow({
           aria-label="Change photo"
           className="shrink-0"
         >
-          <TierBadge tier={player.tier} avatar={player.avatar} />
+          <TierBadge tier={player.tier} avatar={player.avatar} size="md" />
         </button>
         <input
           ref={avatarInputRef}
@@ -131,21 +137,6 @@ export function PlayerRow({
             }}
             className="w-full truncate rounded-md bg-transparent px-1 -mx-1 text-[15px] font-semibold text-line focus:bg-ink-overlay focus:outline-none"
           />
-          {hasActiveSession && (
-            <p className="mt-0.5 flex items-baseline gap-1 px-1">
-              <span className={`font-display text-lg font-bold leading-none tabular-nums ${gamesColor}`}>
-                {gamesPlayed}
-              </span>
-              <span className="text-xs text-line-dim">
-                game{gamesPlayed === 1 ? "" : "s"} played
-              </span>
-              {pendingRequestCount > 0 && (
-                <span className="text-xs text-shuttle">
-                  · {pendingRequestCount} queued request{pendingRequestCount === 1 ? "" : "s"}
-                </span>
-              )}
-            </p>
-          )}
         </div>
         {removing ? (
           <div className="flex shrink-0 animate-reveal gap-1.5">
@@ -167,7 +158,7 @@ export function PlayerRow({
             </Button>
           </div>
         ) : (
-          <div className="flex shrink-0 gap-1">
+          <div className="flex shrink-0 gap-1.5">
             {hasActiveSession && (
               <button
                 onClick={() => setShowRequests(true)}
@@ -182,7 +173,7 @@ export function PlayerRow({
               onClick={() => setEditingTier((v) => !v)}
               disabled={isPlaying}
               aria-label="Edit tier"
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-overlay text-line-dim transition-opacity disabled:opacity-30"
+              className={`flex h-9 w-9 items-center justify-center rounded-lg bg-ink-overlay text-line-dim transition-opacity disabled:opacity-30 ${tierLocked ? "opacity-50" : ""}`}
             >
               <PencilIcon />
             </button>
@@ -198,22 +189,59 @@ export function PlayerRow({
         )}
       </div>
 
+      {hasActiveSession && (
+        <p className="mt-2 flex items-baseline gap-1 pl-[52px]">
+          <span className={`font-display text-lg font-bold leading-none tabular-nums ${gamesColor}`}>
+            {gamesPlayed}
+          </span>
+          <span className="text-xs text-line-dim">
+            game{gamesPlayed === 1 ? "" : "s"} played
+          </span>
+          {pendingRequestCount > 0 && (
+            <span className="text-xs text-shuttle">
+              · {pendingRequestCount} queued request{pendingRequestCount === 1 ? "" : "s"}
+            </span>
+          )}
+        </p>
+      )}
+
       {editingTier && !isPlaying && (
-        <div className="mt-2 flex animate-reveal flex-col gap-2">
-          <div className="flex gap-1.5">
-            {TIERS.map((t) => (
-              <button
-                key={t}
-                onClick={() => {
-                  updatePlayer(player.id, { tier: player.tier === t ? undefined : t });
-                  setEditingTier(false);
-                }}
-                className={`h-9 flex-1 rounded-lg text-sm font-semibold transition-colors ${player.tier === t ? "bg-court-bright text-ink" : "bg-ink-overlay text-line-dim"}`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+        <div className="mt-3 flex animate-reveal flex-col gap-2">
+          {tierLocked ? (
+            <p className="rounded-lg bg-ink-overlay px-3 py-2 text-xs text-line-dim">
+              Turn on <span className="font-semibold text-line">Skill tier balance</span> in
+              Session settings to set player tiers.
+            </p>
+          ) : (
+            <>
+              <div className="flex gap-1.5">
+                {TIERS.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      updatePlayer(player.id, { tier: player.tier === t ? undefined : t });
+                      setEditingTier(false);
+                    }}
+                    className={`h-9 flex-1 rounded-lg text-sm font-semibold transition-colors ${player.tier === t ? "bg-court-bright text-ink" : "bg-ink-overlay text-line-dim"}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              {player.tier && (
+                <Button
+                  variant="ghost"
+                  className="self-start px-2 py-1 text-xs text-bench"
+                  onClick={() => {
+                    updatePlayer(player.id, { tier: undefined });
+                    setEditingTier(false);
+                  }}
+                >
+                  Remove tier
+                </Button>
+              )}
+            </>
+          )}
           {player.avatar && (
             <Button
               variant="ghost"
@@ -230,7 +258,7 @@ export function PlayerRow({
       )}
 
       {isPlaying ? (
-        <div className="mt-2.5 flex items-center gap-2 rounded-lg bg-in/10 px-3 py-2">
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-in/10 px-3 py-2">
           <span className="h-2 w-2 shrink-0 animate-pulse-slow rounded-full bg-in" />
           <span className="text-xs font-semibold text-in">Playing · {playingOnCourtLabel}</span>
           {playingSince != null && (
@@ -240,7 +268,7 @@ export function PlayerRow({
           )}
         </div>
       ) : hasActiveSession ? (
-        <div className="mt-2.5 flex gap-1.5">
+        <div className="mt-3 flex gap-1.5">
           <button
             onClick={() => setAttendance(player.id, false)}
             className={`h-8 flex-1 rounded-lg text-xs font-semibold transition-colors ${status === "not-arrived" ? "bg-ink-overlay text-line" : "bg-transparent text-line-dim"}`}
@@ -262,7 +290,7 @@ export function PlayerRow({
           </button>
         </div>
       ) : (
-        <div className="mt-2">
+        <div className="mt-3">
           <Chip>{STATUS_LABEL[status]} · start a session to take attendance</Chip>
         </div>
       )}
