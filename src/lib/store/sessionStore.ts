@@ -50,6 +50,9 @@ interface SessionState {
   ) => string;
   finishRound: (roundId: string, shuttlecocksUsed?: number) => void;
   cancelRound: (roundId: string) => void;
+  /** Live-updates the shuttlecock count on an in-progress round, so it can
+   *  be tracked as they're used rather than only entered at Mark Complete. */
+  updateRoundShuttlecocks: (roundId: string, count: number) => void;
 
   /** Cancels any in-progress round on this court, so it can be safely removed. */
   cancelActiveRoundForCourt: (courtId: string) => void;
@@ -290,6 +293,18 @@ export const useSessionStore = create<SessionState>()(
           const round = s.rounds.find((r) => r.id === roundId);
           if (!round || round.status !== "in-progress") return s;
           return cancelRoundInState(s, round);
+        }),
+
+      updateRoundShuttlecocks: (roundId, count) =>
+        set((s) => {
+          const round = s.rounds.find((r) => r.id === roundId);
+          if (!round || round.status !== "in-progress") return s;
+          const clamped = Math.max(0, Math.round(count));
+          return {
+            rounds: s.rounds.map((r) =>
+              r.id === roundId ? { ...r, shuttlecocksUsed: clamped } : r,
+            ),
+          };
         }),
 
       cancelActiveRoundForCourt: (courtId) =>

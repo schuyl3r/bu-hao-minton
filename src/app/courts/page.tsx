@@ -7,6 +7,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { CourtCard } from "@/components/courts/CourtCard";
 import { getEligiblePlayerIds } from "@/lib/eligibility";
+import { averageGamesPlayed, gamesPlayedColorClass } from "@/lib/stats";
 import { useConfigStore } from "@/lib/store/configStore";
 import { useSessionStore } from "@/lib/store/sessionStore";
 
@@ -46,6 +47,8 @@ export default function CourtsPage() {
     .filter(Boolean)
     .sort((a, b) => (playerStats[a.id]?.gamesPlayed ?? 0) - (playerStats[b.id]?.gamesPlayed ?? 0));
 
+  const avgGames = averageGamesPlayed(playerStats);
+
   return (
     <main className="flex-1 px-4">
       <SectionHeader title="Courts" />
@@ -84,18 +87,28 @@ export default function CourtsPage() {
         <EmptyState title="Nobody waiting" />
       ) : (
         <ul className="flex animate-reveal flex-col gap-2">
-          {waiting.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center gap-3 rounded-xl border border-hairline bg-ink-raised px-3 py-2 transition-colors"
-            >
-              <TierBadge tier={p.tier} avatar={p.avatar} />
-              <span className="flex-1 text-[15px] text-line">{p.name}</span>
-              <span className="text-xs text-line-dim">
-                {playerStats[p.id]?.gamesPlayed ?? 0} games
-              </span>
-            </li>
-          ))}
+          {waiting.map((p) => {
+            const gamesPlayed = playerStats[p.id]?.gamesPlayed ?? 0;
+            return (
+              <li
+                key={p.id}
+                className="flex items-center gap-3 rounded-xl border border-hairline bg-ink-raised px-3 py-2 transition-colors"
+              >
+                <TierBadge tier={p.tier} avatar={p.avatar} />
+                <span className="flex-1 truncate text-[15px] text-line">{p.name}</span>
+                <span className="flex items-baseline gap-1">
+                  <span
+                    className={`font-display text-lg font-bold leading-none tabular-nums ${gamesPlayedColorClass(gamesPlayed, avgGames)}`}
+                  >
+                    {gamesPlayed}
+                  </span>
+                  <span className="text-xs text-line-dim">
+                    game{gamesPlayed === 1 ? "" : "s"}
+                  </span>
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>

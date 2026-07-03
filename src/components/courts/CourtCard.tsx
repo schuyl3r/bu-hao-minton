@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
 import { LiveElapsed } from "@/components/ui/LiveElapsed";
+import { ShuttleIcon } from "@/components/ui/icons";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { FinishRoundSheet } from "@/components/courts/FinishRoundSheet";
 import { ProposedRoundSheet } from "@/components/courts/ProposedRoundSheet";
@@ -41,6 +43,7 @@ export function CourtCard({
   const startRound = useSessionStore((s) => s.startRound);
   const finishRound = useSessionStore((s) => s.finishRound);
   const cancelRound = useSessionStore((s) => s.cancelRound);
+  const updateRoundShuttlecocks = useSessionStore((s) => s.updateRoundShuttlecocks);
 
   const [proposal, setProposal] = useState<[Team, Team] | null>(null);
   const [notEnough, setNotEnough] = useState(false);
@@ -100,6 +103,35 @@ export function CourtCard({
             ))}
           </div>
 
+          <div className="mt-2.5 flex items-center justify-between rounded-lg bg-ink-overlay px-3 py-2">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-line-dim">
+              <ShuttleIcon className="h-4 w-4 text-shuttle" />
+              Shuttlecocks
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() =>
+                  updateRoundShuttlecocks(round.id, Math.max(0, (round.shuttlecocksUsed ?? 0) - 1))
+                }
+                disabled={!round.shuttlecocksUsed}
+                aria-label="Decrease shuttlecock count"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink text-lg font-semibold text-line disabled:opacity-30"
+              >
+                −
+              </button>
+              <span className="w-8 text-center font-display text-lg tabular-nums text-line">
+                {round.shuttlecocksUsed ?? 0}
+              </span>
+              <button
+                onClick={() => updateRoundShuttlecocks(round.id, (round.shuttlecocksUsed ?? 0) + 1)}
+                aria-label="Increase shuttlecock count"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink text-lg font-semibold text-line"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
           {!confirmingCancel ? (
             <div className="mt-3 flex gap-2">
               <Button variant="danger" className="flex-1" onClick={() => setConfirmingCancel(true)}>
@@ -134,13 +166,15 @@ export function CourtCard({
         </>
       ) : (
         <>
-          <p className="mt-2 text-sm text-line-dim">Free</p>
+          <div className="mt-2">
+            <Chip>Free</Chip>
+          </div>
           {notEnough && (
-            <p className="mt-1 animate-reveal text-xs text-shuttle">
+            <p className="mt-2 animate-reveal text-xs text-shuttle">
               Not enough eligible players waiting for a full round.
             </p>
           )}
-          <Button variant="secondary" fullWidth className="mt-3" onClick={rollProposal}>
+          <Button fullWidth className="mt-3" onClick={rollProposal}>
             Randomize
           </Button>
         </>
@@ -171,6 +205,7 @@ export function CourtCard({
       {finishing && round && (
         <FinishRoundSheet
           courtLabel={court.label}
+          initialShuttlecocks={round.shuttlecocksUsed}
           onClose={() => setFinishing(false)}
           onFinish={(shuttlecocksUsed) => {
             finishRound(round.id, shuttlecocksUsed);

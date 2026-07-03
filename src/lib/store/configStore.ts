@@ -10,6 +10,7 @@ interface ConfigState {
   addPlayer: (name: string, tier?: Tier) => string;
   updatePlayer: (id: string, patch: Partial<Omit<PlayerProfile, "id">>) => void;
   removePlayer: (id: string) => void;
+  clearPlayers: () => void;
 
   addCourt: (label: string) => string;
   updateCourt: (id: string, patch: Partial<Omit<CourtProfile, "id">>) => void;
@@ -37,6 +38,8 @@ export const useConfigStore = create<ConfigState>()(
 
       removePlayer: (id) =>
         set((s) => ({ players: s.players.filter((p) => p.id !== id) })),
+
+      clearPlayers: () => set({ players: [] }),
 
       addCourt: (label) => {
         const id = makeId();

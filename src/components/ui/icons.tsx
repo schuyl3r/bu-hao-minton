@@ -48,6 +48,37 @@ export function QuestionMarkIcon({ className = DEFAULT_SIZE }: IconProps) {
   );
 }
 
+export function SearchIcon({ className = DEFAULT_SIZE }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M19 19l-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function XIcon({ className = DEFAULT_SIZE }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ShuttleIcon({ className = DEFAULT_SIZE }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="12" cy="18.2" r="2.4" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M12 15.9L7.2 4.2M12 15.9L10.4 3.6M12 15.9L13.6 3.6M12 15.9L16.8 4.2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function TrashIcon({ className = DEFAULT_SIZE }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>

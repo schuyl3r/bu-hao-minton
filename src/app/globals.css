@@ -26,9 +26,18 @@
   --font-sans: var(--font-barlow), sans-serif;
 
   --animate-pulse-slow: pulse-slow 2.4s ease-in-out infinite;
-  --animate-reveal: reveal 180ms ease-out both;
-  --animate-fade-in: fade-in 200ms ease-out both;
-  --animate-sheet-in: sheet-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Deliberately no forwards/both fill-mode below: it would leave a
+     non-"none" transform on the element forever after the animation ends,
+     which creates a new containing block for any position:fixed descendant
+     (e.g. a sheet/modal overlay nested inside an animated list wrapper) —
+     silently breaking that overlay's positioning relative to the viewport.
+     Resting state is visually identical either way since nothing else sets
+     transform/opacity on these elements. */
+  --animate-reveal: reveal 180ms ease-out;
+  --animate-fade-in: fade-in 200ms ease-out;
+  --animate-sheet-in: sheet-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-modal-in: modal-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-search-highlight: search-highlight 1100ms ease-out;
 
   @keyframes pulse-slow {
     0%,
@@ -73,6 +82,33 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  /* Centered dialogs (the round-proposal modal) scale+fade in place rather
+     than sliding up, since they're not anchored to a bottom-edge trigger. */
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Search scrolls the page to a row instead of filtering the list, so the
+     matched row flashes briefly to draw the eye to where the view landed. */
+  @keyframes search-highlight {
+    0% {
+      box-shadow: 0 0 0 2px var(--color-court-bright);
+    }
+    75% {
+      box-shadow: 0 0 0 2px var(--color-court-bright);
+    }
+    100% {
+      box-shadow: 0 0 0 2px transparent;
     }
   }
 }

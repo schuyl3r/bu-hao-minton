@@ -50,13 +50,14 @@ export function ProposedRoundSheet({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/60 animate-fade-in" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
       <div
-        className="max-h-[85vh] w-full animate-sheet-in overflow-y-auto rounded-t-2xl border-t border-hairline bg-ink-raised p-4"
-        style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+        className="max-h-[85vh] w-full max-w-sm animate-modal-in overflow-y-auto rounded-2xl border border-hairline bg-ink-raised p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-hairline" />
         <h3 className="font-display text-xl tracking-wide text-line">
           {`NEXT ROUND · ${courtLabel.toUpperCase()}`}
         </h3>

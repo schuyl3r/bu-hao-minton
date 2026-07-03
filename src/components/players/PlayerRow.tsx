@@ -8,6 +8,7 @@ import { LiveElapsed } from "@/components/ui/LiveElapsed";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { RequestSheet } from "@/components/players/RequestSheet";
 import { fileToAvatarDataUrl } from "@/lib/image";
+import { averageGamesPlayed, gamesPlayedColorClass } from "@/lib/stats";
 import { useConfigStore } from "@/lib/store/configStore";
 import { useSessionStore } from "@/lib/store/sessionStore";
 import { TIERS, type PlayerProfile, type PlayerStatus } from "@/lib/types";
@@ -39,12 +40,16 @@ export function PlayerRow({
   player,
   playingOnCourtLabel,
   playingSince,
+  highlighted,
 }: {
   player: PlayerProfile;
   /** Set when this player is seated in an in-progress round — locks every
    *  control below that could change randomizer inputs mid-round. */
   playingOnCourtLabel?: string;
   playingSince?: number;
+  /** Briefly flashes this row — used by the Players page search, which
+   *  scrolls to the best match instead of filtering the list. */
+  highlighted?: boolean;
 }) {
   const [removing, setRemoving] = useState(false);
   const [editingTier, setEditingTier] = useState(false);
@@ -56,6 +61,7 @@ export function PlayerRow({
   const removePlayer = useConfigStore((s) => s.removePlayer);
   const session = useSessionStore((s) => s.session);
   const stats = useSessionStore((s) => s.playerStats[player.id]);
+  const allStats = useSessionStore((s) => s.playerStats);
   const setAttendance = useSessionStore((s) => s.setAttendance);
   const setResting = useSessionStore((s) => s.setResting);
   const cancelActiveRoundForPlayer = useSessionStore((s) => s.cancelActiveRoundForPlayer);
@@ -68,6 +74,9 @@ export function PlayerRow({
   const hasActiveSession = Boolean(session && !session.endedAt);
   const status: PlayerStatus = stats?.status ?? "not-arrived";
   const isPlaying = Boolean(playingOnCourtLabel);
+
+  const gamesPlayed = stats?.gamesPlayed ?? 0;
+  const gamesColor = gamesPlayedColorClass(gamesPlayed, averageGamesPlayed(allStats));
 
   const commitName = () => {
     const trimmed = name.trim();
@@ -88,7 +97,8 @@ export function PlayerRow({
 
   return (
     <li
-      className={`rounded-xl border p-3 transition-colors ${isPlaying ? "border-in/40 bg-in/5" : "border-hairline bg-ink-raised"}`}
+      id={`player-row-${player.id}`}
+      className={`rounded-xl border p-3 transition-colors ${isPlaying ? "border-in/40 bg-in/5" : "border-hairline bg-ink-raised"} ${highlighted ? "animate-search-highlight" : ""}`}
     >
       <div className="flex items-center gap-3">
         <button
@@ -122,10 +132,17 @@ export function PlayerRow({
             className="w-full truncate rounded-md bg-transparent px-1 -mx-1 text-[15px] font-semibold text-line focus:bg-ink-overlay focus:outline-none"
           />
           {hasActiveSession && (
-            <p className="px-1 text-xs text-line-dim">
-              {stats?.gamesPlayed ?? 0} game{stats?.gamesPlayed === 1 ? "" : "s"} played
+            <p className="mt-0.5 flex items-baseline gap-1 px-1">
+              <span className={`font-display text-lg font-bold leading-none tabular-nums ${gamesColor}`}>
+                {gamesPlayed}
+              </span>
+              <span className="text-xs text-line-dim">
+                game{gamesPlayed === 1 ? "" : "s"} played
+              </span>
               {pendingRequestCount > 0 && (
-                <span className="text-shuttle"> · {pendingRequestCount} queued request{pendingRequestCount === 1 ? "" : "s"}</span>
+                <span className="text-xs text-shuttle">
+                  · {pendingRequestCount} queued request{pendingRequestCount === 1 ? "" : "s"}
+                </span>
               )}
             </p>
           )}

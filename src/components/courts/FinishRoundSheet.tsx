@@ -5,14 +5,20 @@ import { Button } from "@/components/ui/Button";
 
 export function FinishRoundSheet({
   courtLabel,
+  initialShuttlecocks,
   onFinish,
   onClose,
 }: {
   courtLabel: string;
+  /** Carries forward the count already tracked live during the round, so
+   *  this is a final check/adjustment rather than re-entering from zero. */
+  initialShuttlecocks?: number;
   onFinish: (shuttlecocksUsed?: number) => void;
   onClose: () => void;
 }) {
-  const [shuttlecocks, setShuttlecocks] = useState("");
+  const [shuttlecocks, setShuttlecocks] = useState(
+    initialShuttlecocks != null ? String(initialShuttlecocks) : "",
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/60 animate-fade-in" onClick={onClose}>
