@@ -243,4 +243,54 @@ describe("computeSessionSummary", () => {
     expect(summary.gameDuration?.longestMinutes).toBe(30);
     expect(summary.gameDuration?.shortestMinutes).toBe(10);
   });
+
+  it("returns null costSummary when no costs were entered", () => {
+    const summary = computeSessionSummary({
+      session,
+      players,
+      courts,
+      rounds: [],
+      requests: [],
+      playerStats: stats({}),
+      now: 60 * 60000,
+    });
+    expect(summary.costSummary).toBeNull();
+  });
+
+  it("splits court + shuttlecock cost evenly across attendees", () => {
+    const rounds: Round[] = [
+      {
+        id: "r1",
+        courtId: "c1",
+        players: ["A", "B", "C", "D"],
+        teams: [
+          ["A", "B"],
+          ["C", "D"],
+        ],
+        startedAt: 0,
+        finishedAt: 20 * 60000,
+        status: "finished",
+        shuttlecocksUsed: 4,
+      },
+    ];
+    const summary = computeSessionSummary({
+      session: {
+        ...session,
+        courtCost: 40,
+        shuttlecockPricing: { mode: "per-tube", price: 30, shuttlesPerTube: 12 },
+      },
+      players,
+      courts,
+      rounds,
+      requests: [],
+      playerStats: stats({ E: { status: "not-arrived" } }),
+      now: 60 * 60000,
+    });
+    expect(summary.costSummary).not.toBeNull();
+    expect(summary.costSummary?.courtCost).toBe(40);
+    expect(summary.costSummary?.shuttlecockCost).toBe(10); // 4 shuttles * (30/12)
+    expect(summary.costSummary?.totalCost).toBe(50);
+    expect(summary.costSummary?.attendeeCount).toBe(4);
+    expect(summary.costSummary?.perPersonShare).toBe(12.5);
+  });
 });

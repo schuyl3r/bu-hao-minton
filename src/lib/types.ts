@@ -81,6 +81,14 @@ export interface MatchRequest {
   honoredInRoundId?: string;
 }
 
+export type ShuttlecockPricing = {
+  mode: "per-shuttle" | "per-tube";
+  /** Price for one shuttle (mode "per-shuttle") or one tube (mode "per-tube"). */
+  price: number;
+  /** Only meaningful for mode "per-tube" — how many shuttles come in a tube. */
+  shuttlesPerTube?: number;
+};
+
 export interface SessionMeta {
   id: string;
   startedAt: number;
@@ -89,4 +97,7 @@ export interface SessionMeta {
   totalHours: number;
   catchUpMode: boolean;
   skillBalanceMode: boolean;
+  /** Optional, entered after ending the session — total price for courts/time. */
+  courtCost?: number;
+  shuttlecockPricing?: ShuttlecockPricing;
 }

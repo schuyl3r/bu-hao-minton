@@ -59,4 +59,4 @@ npm run build
 
 ---
 
-Built by **Schuyler Ng 吴德辉**.
+Built by **Schuyler Ng · 吴德辉**.

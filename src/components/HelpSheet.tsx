@@ -23,7 +23,7 @@ const STEPS = [
   },
   {
     title: "End the session",
-    body: "When you're done for the night, End Session from the home tab, then Export PDF Summary for a full write-up: every game, fairest players, and any requests that never got honored.",
+    body: "When you're done for the night, End Session from the home tab. You'll get an optional prompt for court cost and shuttlecock pricing — fill it in (or skip it) to have the PDF work out an even per-person share. Then Export PDF Summary for a full write-up: every game, fairest players, and any requests that never got honored.",
   },
 ];
 

@@ -10,6 +10,7 @@ import type {
   RequestKind,
   Round,
   SessionMeta,
+  ShuttlecockPricing,
 } from "@/lib/types";
 
 interface SessionState {
@@ -33,6 +34,9 @@ interface SessionState {
 
   setCatchUpMode: (on: boolean) => void;
   setSkillBalanceMode: (on: boolean) => void;
+
+  /** Entered after ending a session — both optional, either can be undefined to clear. */
+  setSessionCosts: (courtCost?: number, shuttlecockPricing?: ShuttlecockPricing) => void;
 
   addRequest: (fromPlayerId: string, targetPlayerId: string, kind: RequestKind) => void;
   cancelRequest: (requestId: string) => void;
@@ -177,6 +181,11 @@ export const useSessionStore = create<SessionState>()(
       setSkillBalanceMode: (on) =>
         set((s) => ({
           session: s.session ? { ...s.session, skillBalanceMode: on } : s.session,
+        })),
+
+      setSessionCosts: (courtCost, shuttlecockPricing) =>
+        set((s) => ({
+          session: s.session ? { ...s.session, courtCost, shuttlecockPricing } : s.session,
         })),
 
       addRequest: (fromPlayerId, targetPlayerId, kind) =>

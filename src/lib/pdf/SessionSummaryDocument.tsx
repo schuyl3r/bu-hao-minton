@@ -150,6 +150,29 @@ export function SessionSummaryDocument({
             </Text>
           )}
         </View>
+
+        {summary.costSummary && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Cost Summary</Text>
+            <View style={styles.row}>
+              <Text style={styles.cellWide}>Court cost</Text>
+              <Text style={styles.cell}>{summary.costSummary.courtCost.toFixed(2)}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.cellWide}>Shuttlecock cost</Text>
+              <Text style={styles.cell}>{summary.costSummary.shuttlecockCost.toFixed(2)}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.cellWide}>Total</Text>
+              <Text style={styles.cell}>{summary.costSummary.totalCost.toFixed(2)}</Text>
+            </View>
+            <Text style={{ marginTop: 6 }}>
+              {summary.costSummary.perPersonShare === null
+                ? "No attendees recorded — can't split a per-person share."
+                : `Split evenly across ${summary.costSummary.attendeeCount} attendee${summary.costSummary.attendeeCount === 1 ? "" : "s"} — ${summary.costSummary.perPersonShare.toFixed(2)} per person.`}
+            </Text>
+          </View>
+        )}
       </Page>
     </Document>
   );

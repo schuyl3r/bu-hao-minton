@@ -3,20 +3,25 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { LiveElapsed } from "@/components/ui/LiveElapsed";
-import { QuestionMarkIcon } from "@/components/ui/icons";
+import { GithubIcon, QuestionMarkIcon } from "@/components/ui/icons";
 import { CourtManager } from "@/components/session/CourtManager";
 import { ExportPdfButton } from "@/components/session/ExportPdfButton";
 import { PendingRequestsList } from "@/components/session/PendingRequestsList";
+import { SessionCostSheet } from "@/components/session/SessionCostSheet";
 import { SessionSettings } from "@/components/session/SessionSettings";
 import { StartSessionForm } from "@/components/session/StartSessionForm";
 import { HelpSheet } from "@/components/HelpSheet";
 import { useSessionStore } from "@/lib/store/sessionStore";
+import { APP_VERSION } from "@/lib/version";
+
+const GITHUB_URL = "https://github.com/schuyl3r/bu-hao-minton";
 
 export default function HomePage() {
   const session = useSessionStore((s) => s.session);
   const endSession = useSessionStore((s) => s.endSession);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showCostSheet, setShowCostSheet] = useState(false);
   const hasActiveSession = Boolean(session && !session.endedAt);
 
   return (
@@ -64,6 +69,7 @@ export default function HomePage() {
                   onClick={() => {
                     endSession();
                     setConfirmingEnd(false);
+                    setShowCostSheet(true);
                   }}
                 >
                   End Session
@@ -82,6 +88,14 @@ export default function HomePage() {
             requests &mdash; as a PDF.
           </p>
           <ExportPdfButton session={session} />
+          <button
+            onClick={() => setShowCostSheet(true)}
+            className="mt-2 w-full rounded-xl bg-ink-overlay py-2.5 text-[13px] font-semibold text-line-dim"
+          >
+            {session.courtCost != null || session.shuttlecockPricing
+              ? "Edit court & shuttlecock costs"
+              : "Add court & shuttlecock costs (optional)"}
+          </button>
         </div>
       )}
 
@@ -118,11 +132,31 @@ export default function HomePage() {
         </div>
       )}
 
-      <p className="mb-2 mt-8 text-center text-[11px] text-line-dim">
-        Built by <span className="font-semibold text-line">Schuyler Ng</span>
-      </p>
+      <div className="mb-2 mt-10 flex flex-col items-center gap-2 text-center">
+        <p className="text-[11px] leading-relaxed text-line-dim">
+          Built by{" "}
+          <span className="font-semibold text-line">Schuyler Ng · 吴德辉</span>
+        </p>
+        <div className="flex items-center gap-3 text-[11px] text-line-dim">
+          <span className="rounded-full bg-ink-overlay px-2 py-0.5 font-mono tracking-wide">
+            v{APP_VERSION}
+          </span>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 font-medium text-line-dim active:text-line"
+          >
+            <GithubIcon className="h-3.5 w-3.5" />
+            GitHub
+          </a>
+        </div>
+      </div>
 
       {showHelp && <HelpSheet onClose={() => setShowHelp(false)} />}
+      {showCostSheet && session && (
+        <SessionCostSheet session={session} onClose={() => setShowCostSheet(false)} />
+      )}
     </main>
   );
 }

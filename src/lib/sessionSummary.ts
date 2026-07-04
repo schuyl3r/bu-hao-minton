@@ -34,6 +34,15 @@ export interface GameDurationStats {
   shortestMinutes: number;
 }
 
+export interface CostSummary {
+  courtCost: number;
+  shuttlecockCost: number;
+  totalCost: number;
+  /** Everyone marked present at any point this session — the total is split evenly across them. */
+  attendeeCount: number;
+  perPersonShare: number | null;
+}
+
 export interface SessionSummary {
   games: GameRow[];
   gamesPerPlayer: { name: string; gamesPlayed: number }[];
@@ -48,6 +57,8 @@ export interface SessionSummary {
   courtActivity: CourtActivity[];
   /** null when no games finished yet — there's nothing to average. */
   gameDuration: GameDurationStats | null;
+  /** null unless a court cost or shuttlecock price was entered after ending the session. */
+  costSummary: CostSummary | null;
 }
 
 export function computeSessionSummary({
@@ -157,6 +168,27 @@ export function computeSessionSummary({
         }
       : null;
 
+  const { courtCost, shuttlecockPricing } = session;
+  let costSummary: CostSummary | null = null;
+  if (courtCost != null || shuttlecockPricing != null) {
+    const unitPrice = shuttlecockPricing
+      ? shuttlecockPricing.mode === "per-tube"
+        ? shuttlecockPricing.price / (shuttlecockPricing.shuttlesPerTube || 12)
+        : shuttlecockPricing.price
+      : 0;
+    const shuttlecockCost = Math.round(unitPrice * totalShuttlecocks * 100) / 100;
+    const totalCourtCost = courtCost ?? 0;
+    const totalCost = Math.round((totalCourtCost + shuttlecockCost) * 100) / 100;
+    costSummary = {
+      courtCost: totalCourtCost,
+      shuttlecockCost,
+      totalCost,
+      attendeeCount: attendedPlayers.length,
+      perPersonShare:
+        attendedPlayers.length > 0 ? Math.round((totalCost / attendedPlayers.length) * 100) / 100 : null,
+    };
+  }
+
   return {
     games,
     gamesPerPlayer,
@@ -167,5 +199,6 @@ export function computeSessionSummary({
     sessionDurationMinutes,
     courtActivity,
     gameDuration,
+    costSummary,
   };
 }
