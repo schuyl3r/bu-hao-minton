@@ -1,5 +1,7 @@
 "use client";
 
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
+
 const STEPS = [
   {
     title: "Start a session",
@@ -28,6 +30,8 @@ const STEPS = [
 ];
 
 export function HelpSheet({ onClose }: { onClose: () => void }) {
+  useLockBodyScroll();
+
   return (
     <div
       className="fixed inset-0 z-50 flex animate-fade-in items-end bg-black/60"

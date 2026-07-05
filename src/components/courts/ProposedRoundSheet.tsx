@@ -6,6 +6,7 @@ import { Chip } from "@/components/ui/Chip";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { requestSatisfied, repeatScoreOf, type Team } from "@/lib/randomizer";
 import type { MatchRequest, PlayerProfile, PlayerSessionStats } from "@/lib/types";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 export function ProposedRoundSheet({
   courtLabel,
@@ -32,6 +33,7 @@ export function ProposedRoundSheet({
   onConfirm: (players: [string, string, string, string], teams: [Team, Team]) => void;
   onClose: () => void;
 }) {
+  useLockBodyScroll();
   const [swapping, setSwapping] = useState<{ teamIndex: 0 | 1; slotIndex: 0 | 1 } | null>(null);
 
   const players = [...teams[0], ...teams[1]] as [string, string, string, string];

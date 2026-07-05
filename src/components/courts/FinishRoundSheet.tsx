@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 export function FinishRoundSheet({
   courtLabel,
@@ -16,6 +17,7 @@ export function FinishRoundSheet({
   onFinish: (shuttlecocksUsed?: number) => void;
   onClose: () => void;
 }) {
+  useLockBodyScroll();
   const [shuttlecocks, setShuttlecocks] = useState(
     initialShuttlecocks != null ? String(initialShuttlecocks) : "",
   );

@@ -12,9 +12,9 @@ export function StartSessionForm() {
   const existingPlayerCount = useConfigStore((s) => s.players.length);
   const existingCourtCount = useConfigStore((s) => s.courts.length);
 
-  const [courtCount, setCourtCount] = useState(Math.max(existingCourtCount, 2));
-  const [playerCount, setPlayerCount] = useState(Math.max(existingPlayerCount, 8));
-  const [totalHours, setTotalHours] = useState(2);
+  const [courtCount, setCourtCount] = useState(String(Math.max(existingCourtCount, 2)));
+  const [playerCount, setPlayerCount] = useState(String(Math.max(existingPlayerCount, 8)));
+  const [totalHours, setTotalHours] = useState("2");
   const [catchUpMode, setCatchUpMode] = useState(false);
   const [skillBalanceMode, setSkillBalanceMode] = useState(false);
 
@@ -22,7 +22,13 @@ export function StartSessionForm() {
   // Session page hides it otherwise), so starting here never overwrites an
   // in-progress session — no confirmation step needed.
   const start = () => {
-    startNewSession({ totalHours, courtCount, playerCount, catchUpMode, skillBalanceMode });
+    startNewSession({
+      totalHours: Number(totalHours) || 0.5,
+      courtCount: Number(courtCount) || 1,
+      playerCount: Number(playerCount) || 4,
+      catchUpMode,
+      skillBalanceMode,
+    });
   };
 
   return (
@@ -46,7 +52,7 @@ export function StartSessionForm() {
             min={1}
             inputMode="numeric"
             value={courtCount}
-            onChange={(e) => setCourtCount(Number(e.target.value) || 0)}
+            onChange={(e) => setCourtCount(e.target.value)}
             className="mt-1 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
           />
         </div>
@@ -57,7 +63,7 @@ export function StartSessionForm() {
             min={4}
             inputMode="numeric"
             value={playerCount}
-            onChange={(e) => setPlayerCount(Number(e.target.value) || 0)}
+            onChange={(e) => setPlayerCount(e.target.value)}
             className="mt-1 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
           />
         </div>
@@ -73,7 +79,7 @@ export function StartSessionForm() {
         step={0.5}
         inputMode="decimal"
         value={totalHours}
-        onChange={(e) => setTotalHours(Number(e.target.value) || 0)}
+        onChange={(e) => setTotalHours(e.target.value)}
         className="mt-1 w-32 rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
       />
       <p className="mt-1 text-[11px] text-line-dim">

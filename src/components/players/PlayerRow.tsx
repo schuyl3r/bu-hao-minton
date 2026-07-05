@@ -122,7 +122,7 @@ export function PlayerRow({
           className="hidden"
           onChange={handleAvatarChange}
         />
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <input
             data-player-name-input
             value={name}
@@ -135,8 +135,9 @@ export function PlayerRow({
                 focusNextNameInput(e.currentTarget);
               }
             }}
-            className="w-full truncate rounded-md bg-transparent px-1 -mx-1 text-[15px] font-semibold text-line focus:bg-ink-overlay focus:outline-none"
+            className="w-full min-w-0 truncate rounded-md bg-ink-overlay/60 px-1.5 py-0.5 -mx-1.5 text-[15px] font-semibold text-line focus:bg-ink-overlay focus:outline-none"
           />
+          <PencilIcon className="h-3 w-3 shrink-0 text-line-dim" />
         </div>
         {removing ? (
           <div className="flex shrink-0 animate-reveal gap-1.5">

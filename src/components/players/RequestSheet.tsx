@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { useConfigStore } from "@/lib/store/configStore";
 import { useSessionStore } from "@/lib/store/sessionStore";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import type { PlayerProfile, RequestKind } from "@/lib/types";
 
 export function RequestSheet({
@@ -13,6 +14,7 @@ export function RequestSheet({
   fromPlayer: PlayerProfile;
   onClose: () => void;
 }) {
+  useLockBodyScroll();
   const players = useConfigStore((s) => s.players);
   const addRequest = useSessionStore((s) => s.addRequest);
   const existingRequests = useSessionStore((s) => s.requests);

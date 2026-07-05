@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useKeyboardVisible } from "@/lib/useKeyboardVisible";
 
 const TABS = [
   { href: "/", label: "Session", icon: SessionIcon },
@@ -11,6 +12,11 @@ const TABS = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const keyboardVisible = useKeyboardVisible();
+
+  // Give the field being typed into the full viewport instead of ceding a
+  // chunk of it to a nav bar nobody can reach past the keyboard anyway.
+  if (keyboardVisible) return null;
 
   return (
     <nav

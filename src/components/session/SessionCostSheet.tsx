@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { useSessionStore } from "@/lib/store/sessionStore";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import type { SessionMeta, ShuttlecockPricing } from "@/lib/types";
 
 const DEFAULT_SHUTTLES_PER_TUBE = "12";
@@ -14,6 +15,7 @@ export function SessionCostSheet({
   session: SessionMeta;
   onClose: () => void;
 }) {
+  useLockBodyScroll();
   const setSessionCosts = useSessionStore((s) => s.setSessionCosts);
   const [courtCost, setCourtCost] = useState(
     session.courtCost != null ? String(session.courtCost) : "",
