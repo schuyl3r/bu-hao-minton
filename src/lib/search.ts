@@ -46,3 +46,29 @@ export function findBestNameMatch<T extends { name: string }>(
   }
   return best;
 }
+
+/**
+ * Filters items whose name contains the query (case-insensitive), ranked
+ * exact > starts-with > contains, for a live-narrowing search list. Unlike
+ * findBestNameMatch, this never falls back to fuzzy edit-distance — a query
+ * with no substring match returns an empty list, so the caller can offer
+ * "add as new" instead of a low-confidence guess to scroll through.
+ */
+export function filterByName<T extends { name: string }>(items: T[], query: string): T[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return items;
+
+  const scored = items
+    .map((item) => {
+      const name = item.name.trim().toLowerCase();
+      let score: number;
+      if (name === q) score = 0;
+      else if (name.startsWith(q)) score = 1;
+      else if (name.includes(q)) score = 2;
+      else score = -1;
+      return { item, score };
+    })
+    .filter((s) => s.score >= 0);
+  scored.sort((a, b) => a.score - b.score || a.item.name.localeCompare(b.item.name));
+  return scored.map((s) => s.item);
+}

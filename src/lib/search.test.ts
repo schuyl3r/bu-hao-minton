@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findBestNameMatch } from "@/lib/search";
+import { filterByName, findBestNameMatch } from "@/lib/search";
 
 function items(names: string[]) {
   return names.map((name, i) => ({ id: String(i), name }));
@@ -38,5 +38,34 @@ describe("findBestNameMatch", () => {
   it("is case-insensitive", () => {
     const list = items(["Alice"]);
     expect(findBestNameMatch(list, "ALICE")?.name).toBe("Alice");
+  });
+});
+
+describe("filterByName", () => {
+  it("returns every item, unfiltered, for an empty query", () => {
+    const list = items(["Alice", "Bob"]);
+    expect(filterByName(list, "")).toEqual(list);
+    expect(filterByName(list, "   ")).toEqual(list);
+  });
+
+  it("returns an empty list when nothing contains the query (no fuzzy fallback)", () => {
+    const list = items(["Schuyler", "Bob", "Zoe"]);
+    expect(filterByName(list, "Shuyler")).toEqual([]);
+  });
+
+  it("ranks exact match, then starts-with, then contains", () => {
+    const list = items(["Micha Chan", "Al Micha", "Micha"]);
+    const result = filterByName(list, "Micha");
+    expect(result.map((r) => r.name)).toEqual(["Micha", "Micha Chan", "Al Micha"]);
+  });
+
+  it("is case-insensitive", () => {
+    const list = items(["Alice", "Bob"]);
+    expect(filterByName(list, "ALI").map((r) => r.name)).toEqual(["Alice"]);
+  });
+
+  it("sorts ties alphabetically", () => {
+    const list = items(["Wei Jie", "Wei Ming"]);
+    expect(filterByName(list, "Wei").map((r) => r.name)).toEqual(["Wei Jie", "Wei Ming"]);
   });
 });

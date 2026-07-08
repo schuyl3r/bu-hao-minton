@@ -13,7 +13,6 @@ export function StartSessionForm() {
   const existingCourtCount = useConfigStore((s) => s.courts.length);
 
   const [courtCount, setCourtCount] = useState(String(Math.max(existingCourtCount, 2)));
-  const [playerCount, setPlayerCount] = useState(String(Math.max(existingPlayerCount, 8)));
   const [totalHours, setTotalHours] = useState("2");
   const [catchUpMode, setCatchUpMode] = useState(false);
   const [skillBalanceMode, setSkillBalanceMode] = useState(false);
@@ -25,7 +24,6 @@ export function StartSessionForm() {
     startNewSession({
       totalHours: Number(totalHours) || 0.5,
       courtCount: Number(courtCount) || 1,
-      playerCount: Number(playerCount) || 4,
       catchUpMode,
       skillBalanceMode,
     });
@@ -38,38 +36,24 @@ export function StartSessionForm() {
       </p>
       <p className="mt-1 text-xs text-line-dim">
         Your player roster carries over
-        {existingPlayerCount > 0 || existingCourtCount > 0
-          ? ` (${existingPlayerCount} players, ${existingCourtCount} courts already saved)`
+        {existingPlayerCount > 0
+          ? ` (${existingPlayerCount} player${existingPlayerCount === 1 ? "" : "s"} saved)`
           : ""}
-        . Attendance, games played, and pairing history all start fresh.
+        . Attendance, games played, and pairing history all start fresh — pick who&rsquo;s here
+        from the Players tab once the session starts.
       </p>
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-line-dim">Courts</label>
-          <input
-            type="number"
-            min={1}
-            inputMode="numeric"
-            value={courtCount}
-            onChange={(e) => setCourtCount(e.target.value)}
-            className="mt-1 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-line-dim">Players</label>
-          <input
-            type="number"
-            min={4}
-            inputMode="numeric"
-            value={playerCount}
-            onChange={(e) => setPlayerCount(e.target.value)}
-            className="mt-1 w-full rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
-          />
-        </div>
-      </div>
+      <label className="mt-3 block text-xs font-medium text-line-dim">Courts</label>
+      <input
+        type="number"
+        min={1}
+        inputMode="numeric"
+        value={courtCount}
+        onChange={(e) => setCourtCount(e.target.value)}
+        className="mt-1 w-32 rounded-lg bg-ink-overlay px-3 py-2.5 text-base text-line focus:outline-none"
+      />
       <p className="mt-1 text-[11px] text-line-dim">
-        Only adds slots to reach these counts — your existing roster is never duplicated.
+        Only adds court slots to reach this count — your existing courts are never duplicated.
       </p>
 
       <label className="mt-3 block text-xs font-medium text-line-dim">Total hours</label>

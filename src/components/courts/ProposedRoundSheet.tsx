@@ -18,6 +18,8 @@ export function ProposedRoundSheet({
   playerStats,
   pendingRequests,
   skillBalanceMode,
+  mode = "start",
+  busyElsewhereLabel,
   onConfirm,
   onClose,
 }: {
@@ -30,6 +32,10 @@ export function ProposedRoundSheet({
   playerStats: Record<string, PlayerSessionStats>;
   pendingRequests: MatchRequest[];
   skillBalanceMode: boolean;
+  /** "queue" builds a reservation that auto-starts once every player is free, rather than starting immediately. */
+  mode?: "start" | "queue";
+  /** playerId -> the court label they're currently busy on, for tagging bench entries in queue mode. */
+  busyElsewhereLabel?: Record<string, string>;
   onConfirm: (players: [string, string, string, string], teams: [Team, Team]) => void;
   onClose: () => void;
 }) {
@@ -61,8 +67,13 @@ export function ProposedRoundSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="font-display text-xl tracking-wide text-line">
-          {`NEXT ROUND · ${courtLabel.toUpperCase()}`}
+          {`${mode === "queue" ? "QUEUE NEXT ROUND" : "NEXT ROUND"} · ${courtLabel.toUpperCase()}`}
         </h3>
+        {mode === "queue" && (
+          <p className="mt-1 text-xs text-line-dim">
+            Reserves these players now — starts automatically once everyone&rsquo;s free.
+          </p>
+        )}
 
         <div className="mt-3 flex gap-2">
           {teams.map((team, teamIndex) => (
@@ -85,6 +96,11 @@ export function ProposedRoundSheet({
                   >
                     <TierBadge tier={playersById[id]?.tier} avatar={playersById[id]?.avatar} />
                     <span className="min-w-0 flex-1 truncate text-sm text-line">{nameOf(id)}</span>
+                    {busyElsewhereLabel?.[id] && (
+                      <span className="shrink-0 rounded-full bg-bench/20 px-1.5 py-0.5 text-[10px] font-semibold text-bench">
+                        {busyElsewhereLabel[id]}
+                      </span>
+                    )}
                     <span className="text-xs text-line-dim">⇄</span>
                   </button>
                 ))}
@@ -102,15 +118,23 @@ export function ProposedRoundSheet({
               <p className="text-xs text-line-dim">No one else is eligible right now.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {bench.map((id) => (
-                  <button
-                    key={id}
-                    onClick={() => swapTo(id)}
-                    className="rounded-full bg-ink-overlay px-3 py-1.5 text-xs font-medium text-line"
-                  >
-                    {nameOf(id)}
-                  </button>
-                ))}
+                {bench.map((id) => {
+                  const busyLabel = busyElsewhereLabel?.[id];
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => swapTo(id)}
+                      className="flex items-center gap-1.5 rounded-full bg-ink-overlay px-3 py-1.5 text-xs font-medium text-line"
+                    >
+                      {nameOf(id)}
+                      {busyLabel && (
+                        <span className="rounded-full bg-bench/20 px-1.5 py-0.5 text-[10px] font-semibold text-bench">
+                          {busyLabel}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
             <Button variant="ghost" className="mt-2 px-2 py-1 text-xs" onClick={() => setSwapping(null)}>
@@ -142,7 +166,7 @@ export function ProposedRoundSheet({
           </Button>
         </div>
         <Button fullWidth className="mt-2" onClick={() => onConfirm(players, teams)}>
-          Confirm &amp; Start
+          {mode === "queue" ? "Confirm & Queue" : "Confirm & Start"}
         </Button>
       </div>
     </div>

@@ -384,4 +384,56 @@ describe("generateRound", () => {
       expect(a).toEqual(b);
     });
   });
+
+  describe("widened pool (cross-court queueing scenario)", () => {
+    it("prefers a fresh cross-court pairing over a forced repeat among only-free players", () => {
+      // A/B/C/D just finished together and have played every combination
+      // among themselves already — the only-free pool this represents (e.g.
+      // right after their own court frees up, with nobody else around yet).
+      const stats = statsFor(["A", "B", "C", "D", "E", "F"]);
+      recordMeeting(stats, "A", "B", "pairedWith");
+      recordMeeting(stats, "C", "D", "pairedWith");
+      recordMeeting(stats, "A", "C", "against");
+      recordMeeting(stats, "A", "D", "against");
+      recordMeeting(stats, "B", "C", "against");
+      recordMeeting(stats, "B", "D", "against");
+
+      const narrow = run({
+        eligiblePlayerIds: ["A", "B", "C", "D"],
+        playerStats: stats,
+        playerTiers: {},
+        pendingRequests: [],
+        catchUpMode: false,
+        skillBalanceMode: false,
+      });
+      expect(narrow.ok).toBe(true);
+      if (!narrow.ok) return;
+      // Forced repeat: every one of the 6 pairs among these 4 has already
+      // met (once each), so the narrow-pool score is stuck at 6 regardless
+      // of which split is chosen (repeatScoreOf sums all 6 pairs in the
+      // group, so it's invariant to team assignment).
+      expect(narrow.repeatScore).toBe(6);
+
+      // E and F are still mid-game on another court right now, but are
+      // reachable via getQueueablePlayerIds for a cross-court queue proposal
+      // — they've never met anyone in A-D or each other. With only 2 fresh
+      // players available, the best possible group still needs 2 of A-D
+      // (carrying exactly 1 prior meeting), so the true minimum is 1 — but
+      // that's a large improvement over the narrow pool's forced 6.
+      const wide = run({
+        eligiblePlayerIds: ["A", "B", "C", "D", "E", "F"],
+        playerStats: stats,
+        playerTiers: {},
+        pendingRequests: [],
+        catchUpMode: false,
+        skillBalanceMode: false,
+      });
+      expect(wide.ok).toBe(true);
+      if (!wide.ok) return;
+      expect(wide.repeatScore).toBe(1);
+      expect(wide.repeatScore).toBeLessThan(narrow.repeatScore);
+      expect(wide.players).toContain("E");
+      expect(wide.players).toContain("F");
+    });
+  });
 });

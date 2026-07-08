@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AddPlayerForm } from "@/components/players/AddPlayerForm";
 import { PlayerRow } from "@/components/players/PlayerRow";
+import { RestOfRoster } from "@/components/players/RestOfRoster";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchIcon, TrashIcon, XIcon } from "@/components/ui/icons";
@@ -40,24 +41,6 @@ export default function PlayersPage() {
   const [confirmingClear, setConfirmingClear] = useState(false);
   const highlightTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Search doesn't filter the list — it scrolls the page to the best match
-  // and briefly flashes that row, so the full roster stays visible and
-  // nothing else jumps around while you type.
-  useEffect(() => {
-    if (!search.trim()) return;
-    const debounce = setTimeout(() => {
-      const match = findBestNameMatch(players, search);
-      if (!match) return;
-      setMatchedId(match.id);
-      document
-        .getElementById(`player-row-${match.id}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      clearTimeout(highlightTimeout.current);
-      highlightTimeout.current = setTimeout(() => setMatchedId(null), 1100);
-    }, 200);
-    return () => clearTimeout(debounce);
-  }, [search, players]);
-
   // Players seated in an in-progress round get pulled into their own
   // section further down, with their court + how-long-they've-been-on
   // attached, and disappear from the regular roster list while playing.
@@ -73,7 +56,37 @@ export default function PlayersPage() {
   const roster = players.filter((p) => !playingInfo[p.id]);
   const playing = players.filter((p) => playingInfo[p.id]);
 
-  const sorted = [...roster].sort((a, b) => {
+  // Once a session is running, attendance splits the roster in two: who's
+  // actually here this week vs. everyone else known but not yet added —
+  // pre-session there's no attendance concept yet, so it stays one flat list.
+  const thisWeek = hasActiveSession
+    ? roster.filter((p) => (playerStats[p.id]?.status ?? "not-arrived") !== "not-arrived")
+    : roster;
+  const restOfRoster = hasActiveSession
+    ? roster.filter((p) => (playerStats[p.id]?.status ?? "not-arrived") === "not-arrived")
+    : [];
+
+  // Search doesn't filter the list — it scrolls the page to the best match
+  // and briefly flashes that row, so the full roster stays visible and
+  // nothing else jumps around while you type. Rest of Roster has its own,
+  // separate search for filtering + adding, so this only needs to find rows
+  // actually rendered as full PlayerRow cards (playing + This Week).
+  useEffect(() => {
+    if (!search.trim()) return;
+    const debounce = setTimeout(() => {
+      const match = findBestNameMatch(players, search);
+      if (!match) return;
+      setMatchedId(match.id);
+      document
+        .getElementById(`player-row-${match.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      clearTimeout(highlightTimeout.current);
+      highlightTimeout.current = setTimeout(() => setMatchedId(null), 1100);
+    }, 200);
+    return () => clearTimeout(debounce);
+  }, [search, players]);
+
+  const sorted = [...thisWeek].sort((a, b) => {
     if (sortMode === "name") return a.name.localeCompare(b.name);
     if (sortMode === "games") {
       const ga = playerStats[a.id]?.gamesPlayed ?? 0;
@@ -90,13 +103,15 @@ export default function PlayersPage() {
     (p) => (playerStats[p.id]?.status ?? "not-arrived") !== "not-arrived",
   ).length;
 
-  const showTools = players.length > TOOLS_THRESHOLD;
+  const showTools = sorted.length > TOOLS_THRESHOLD;
 
   const clearAll = () => {
-    // Every in-progress round necessarily includes someone about to be
-    // removed, so cancel first — otherwise a round is left pointing at
+    // Every in-progress or queued round necessarily includes someone about
+    // to be removed, so cancel first — otherwise a round is left pointing at
     // players that no longer exist.
-    rounds.filter((r) => r.status === "in-progress").forEach((r) => cancelRound(r.id));
+    rounds
+      .filter((r) => r.status === "in-progress" || r.status === "queued")
+      .forEach((r) => cancelRound(r.id));
     clearPlayers();
     setConfirmingClear(false);
   };
@@ -178,19 +193,39 @@ export default function PlayersPage() {
         </div>
       )}
 
-      {sorted.length === 0 ? (
-        playing.length === 0 && (
-          <EmptyState
-            title="No players yet"
-            hint="Add everyone on your roster — you'll only need to do this once."
-          />
+      {!hasActiveSession ? (
+        sorted.length === 0 ? (
+          playing.length === 0 && (
+            <EmptyState
+              title="No players yet"
+              hint="Add everyone on your roster — you'll only need to do this once."
+            />
+          )
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {sorted.map((p) => (
+              <PlayerRow key={p.id} player={p} highlighted={p.id === matchedId} />
+            ))}
+          </ul>
         )
       ) : (
-        <ul className="flex flex-col gap-2">
-          {sorted.map((p) => (
-            <PlayerRow key={p.id} player={p} highlighted={p.id === matchedId} />
-          ))}
-        </ul>
+        <>
+          <h2 className="mb-2 font-display text-xl tracking-wide text-line">
+            THIS WEEK ({sorted.length})
+          </h2>
+          {sorted.length === 0 ? (
+            <p className="mb-5 px-1 text-xs text-line-dim">
+              Nobody added yet — pick names from Rest of Roster below.
+            </p>
+          ) : (
+            <ul className="mb-5 flex flex-col gap-2">
+              {sorted.map((p) => (
+                <PlayerRow key={p.id} player={p} highlighted={p.id === matchedId} />
+              ))}
+            </ul>
+          )}
+          <RestOfRoster players={restOfRoster} allPlayers={players} />
+        </>
       )}
 
       {players.length > 0 && (

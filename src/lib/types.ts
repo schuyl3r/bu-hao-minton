@@ -49,12 +49,16 @@ export interface PlayerSessionStats {
  * Courts run fully independently — there's no shared block clock, so the
  * only thing tracked here is which round (if any) is currently on it. Each
  * round carries its own startedAt/finishedAt for its count-up stopwatch.
+ * `queuedRoundId` is independent of `currentRoundId` — a court can have a
+ * queued "next round" waiting (reserving players still busy elsewhere) while
+ * its own current round is still in progress.
  */
 export interface CourtSessionState {
   currentRoundId: string | null;
+  queuedRoundId: string | null;
 }
 
-export type RoundStatus = "in-progress" | "finished" | "cancelled";
+export type RoundStatus = "in-progress" | "queued" | "finished" | "cancelled";
 
 export interface Round {
   id: string;
@@ -63,6 +67,7 @@ export interface Round {
   players: [string, string, string, string];
   /** Two teams of two, drawn from `players`. */
   teams: [[string, string], [string, string]];
+  /** For status "queued", this is when it was queued — overwritten with the real start time on activation. */
   startedAt: number;
   finishedAt: number | null;
   status: RoundStatus;

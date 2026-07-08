@@ -8,6 +8,7 @@ import { ShuttleIcon } from "@/components/ui/icons";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { FinishRoundSheet } from "@/components/courts/FinishRoundSheet";
 import { ProposedRoundSheet } from "@/components/courts/ProposedRoundSheet";
+import { getQueueablePlayerIds } from "@/lib/eligibility";
 import { generateRound, requestSatisfied, type Team } from "@/lib/randomizer";
 import { useSessionStore } from "@/lib/store/sessionStore";
 import type {
@@ -22,6 +23,10 @@ import type {
 export function CourtCard({
   court,
   round,
+  queuedRound,
+  rounds,
+  anyOtherCourtInProgress,
+  busyElsewhereLabel,
   playersById,
   playerStats,
   playerTiers,
@@ -32,6 +37,14 @@ export function CourtCard({
 }: {
   court: CourtProfile;
   round: Round | undefined;
+  /** This court's pending queued round, if any (reserving players for its next round). */
+  queuedRound: Round | undefined;
+  /** Every round this session, needed to build the wider "queue" candidate pool. */
+  rounds: Round[];
+  /** Whether some OTHER court currently has a round in progress — gates the "Queue next round" action. */
+  anyOtherCourtInProgress: boolean;
+  /** playerId -> the court label they're currently busy on, for tagging reserved players. */
+  busyElsewhereLabel: Record<string, string>;
   playersById: Record<string, PlayerProfile>;
   playerStats: Record<string, PlayerSessionStats>;
   playerTiers: Record<string, Tier | undefined>;
@@ -41,20 +54,27 @@ export function CourtCard({
   skillBalanceMode: boolean;
 }) {
   const startRound = useSessionStore((s) => s.startRound);
+  const queueRound = useSessionStore((s) => s.queueRound);
+  const cancelQueuedRound = useSessionStore((s) => s.cancelQueuedRound);
   const finishRound = useSessionStore((s) => s.finishRound);
   const cancelRound = useSessionStore((s) => s.cancelRound);
   const updateRoundShuttlecocks = useSessionStore((s) => s.updateRoundShuttlecocks);
 
-  const [proposal, setProposal] = useState<[Team, Team] | null>(null);
+  const [proposal, setProposal] = useState<{ mode: "start" | "queue"; teams: [Team, Team] } | null>(
+    null,
+  );
   const [notEnough, setNotEnough] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const nameOf = (id: string) => playersById[id]?.name ?? "?";
 
-  const rollProposal = () => {
+  const poolFor = (mode: "start" | "queue") =>
+    mode === "queue" ? getQueueablePlayerIds(playerStats, rounds, court.id) : eligiblePlayerIds;
+
+  const rollProposal = (mode: "start" | "queue") => {
     const result = generateRound({
-      eligiblePlayerIds,
+      eligiblePlayerIds: poolFor(mode),
       playerStats,
       playerTiers,
       pendingRequests,
@@ -67,8 +87,10 @@ export function CourtCard({
       return;
     }
     setNotEnough(false);
-    setProposal(result.teams);
+    setProposal({ mode, teams: result.teams });
   };
+
+  const showQueueAction = anyOtherCourtInProgress && !queuedRound;
 
   return (
     <div className="rounded-xl border border-hairline bg-ink-raised p-4">
@@ -163,40 +185,99 @@ export function CourtCard({
               </div>
             </div>
           )}
+
+          {showQueueAction && (
+            <Button
+              variant="secondary"
+              fullWidth
+              className="mt-2"
+              onClick={() => rollProposal("queue")}
+            >
+              Queue next round
+            </Button>
+          )}
         </>
       ) : (
         <>
           <div className="mt-2">
             <Chip>Free</Chip>
           </div>
-          {notEnough && (
-            <p className="mt-2 animate-reveal text-xs text-shuttle">
-              Not enough eligible players waiting for a full round.
-            </p>
+          {!queuedRound && (
+            <>
+              {notEnough && (
+                <p className="mt-2 animate-reveal text-xs text-shuttle">
+                  Not enough eligible players waiting for a full round.
+                </p>
+              )}
+              <Button fullWidth className="mt-3" onClick={() => rollProposal("start")}>
+                Randomize
+              </Button>
+              {showQueueAction && (
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  className="mt-2"
+                  onClick={() => rollProposal("queue")}
+                >
+                  Queue next round
+                </Button>
+              )}
+            </>
           )}
-          <Button fullWidth className="mt-3" onClick={rollProposal}>
-            Randomize
-          </Button>
         </>
+      )}
+
+      {queuedRound && (
+        <div className="mt-3 animate-reveal rounded-xl border border-bench/40 bg-bench/10 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-bench">
+            Queued · starts when everyone&rsquo;s free
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {queuedRound.players.map((pid) => (
+              <div key={pid} className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-sm font-medium text-line">{nameOf(pid)}</span>
+                {busyElsewhereLabel[pid] && (
+                  <span className="shrink-0 rounded-full bg-bench/20 px-1.5 py-0.5 text-[10px] font-semibold text-bench">
+                    {busyElsewhereLabel[pid]}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <Button
+            variant="danger"
+            fullWidth
+            className="mt-2"
+            onClick={() => cancelQueuedRound(queuedRound.id)}
+          >
+            Cancel queue
+          </Button>
+        </div>
       )}
 
       {proposal && (
         <ProposedRoundSheet
           courtLabel={court.label}
-          teams={proposal}
-          onTeamsChange={setProposal}
-          onRerandomize={rollProposal}
-          eligiblePool={eligiblePlayerIds}
+          teams={proposal.teams}
+          onTeamsChange={(teams) => setProposal({ mode: proposal.mode, teams })}
+          onRerandomize={() => rollProposal(proposal.mode)}
+          eligiblePool={poolFor(proposal.mode)}
           playersById={playersById}
           playerStats={playerStats}
           pendingRequests={pendingRequests}
           skillBalanceMode={skillBalanceMode}
+          mode={proposal.mode}
+          busyElsewhereLabel={busyElsewhereLabel}
           onClose={() => setProposal(null)}
           onConfirm={(players, teams) => {
             const honoredIds = pendingRequests
               .filter((r) => requestSatisfied(r, players, teams))
               .map((r) => r.id);
-            startRound(court.id, players, teams, honoredIds);
+            if (proposal.mode === "queue") {
+              queueRound(court.id, players, teams, honoredIds);
+            } else {
+              startRound(court.id, players, teams, honoredIds);
+            }
             setProposal(null);
           }}
         />
